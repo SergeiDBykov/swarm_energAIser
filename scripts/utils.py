@@ -1,8 +1,15 @@
 import matplotlib
 import seaborn as sns
 import matplotlib.pyplot as plt
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from IPython.display import display
+import h5py
 
-rep_path = '/Users/sdbykov/not_work/swarm_energAIser/'
+
+
+rep_path = '/Users/sdbykov/not_work/swarm_energAIser/' #change it here for your local path!
 data_path = rep_path+'0_data/'
 plot_path = rep_path+'0_data/plots/'
 
