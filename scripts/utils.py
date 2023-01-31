@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 from IPython.display import display
 import h5py
 
-
+pd.set_option('display.max_columns', 500)
 
 rep_path = '/Users/sdbykov/not_work/swarm_energAIser/' #change it here for your local path!
 data_path = rep_path+'0_data/'

@@ -3,7 +3,7 @@
 
 
 
-put data from the (paper)[https://www.nature.com/articles/s41597-022-01156-1] in `0_data/Schlemminger2022/`.
+put data from the (paper)[https://www.nature.com/articles/s41597-022-01156-1] in `0_data/Schlemminger2022/`. Data processing: see (here)[https://github.com/ISFH/WPuQ] (by the paper authors)
 
 Before accessing data, install the h5py package with 
 ```
