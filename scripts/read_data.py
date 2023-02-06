@@ -20,13 +20,13 @@ def read_timeseries_s22_year(resol: str = '60min', year: str = '2018') -> pd.Dat
     print(f'READ FROM {data_path_s22}')
     assert resol in ['10s', '1min', '15min', '60min'], f'Resolution {resol} is not available. Please choose from 10s, 1min, 15min, 60min'
 
-    available_home_numbers = ['3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '14', '16', '17', '18',
+    available_home_numbers = ['3', '4', '5',  '7', '8', '9', '10', '11', '12', '14', '16', '18',
                                 '19', '20', '21', '22', '23', '27', '28', '29', '30', '31', '32',
                                 '34', '35', '36', '37', '38', '39', '40']
     available_home_numbers_PV = ['13','15', '26', '33']
 
     #house 24 and 25  ignored since they have less than 2 years of data
-
+    #house 6,17 removed since it has only around 50% of data
 
 
     filename_sub = data_path_s22+year+'_data_'+'spatial.hdf5'
