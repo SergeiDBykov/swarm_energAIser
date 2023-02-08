@@ -5,7 +5,9 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from IPython.display import display
+import glob
 import h5py
+from tqdm import tqdm
 
 import warnings
 from tables import NaturalNameWarning
@@ -138,3 +140,29 @@ def read_weather_s22(resol = '60min'):
 
     return df
 
+
+
+
+def read_london_file(filename: str) -> pd.DataFrame:
+    data_path_london = data_path+'London/'
+    df = pd.read_csv(data_path_london+filename, skiprows=1,delim_whitespace=False,header=None, usecols=[0,1,2,3], names=['id','mode','date','power'])
+    df['date']=pd.to_datetime(df['date'].astype(str) ,format='%Y-%m-%d %H:%M:%S.%f')
+    df['power'] = pd.to_numeric(df['power'], errors='coerce')
+
+    return df
+
+
+def read_london(file_limit = 10):
+    data_path_london = data_path+'London/'
+
+    london_files   = glob.glob(data_path_london+'*.csv')
+
+    dfs = []
+    for file in tqdm(london_files[:file_limit]):
+        fname = file.split('/')[-1]
+        df = read_london_file(fname)
+        dfs.append(df)
+
+    df_total = pd.concat(dfs, axis=0)
+    
+    return df_total
