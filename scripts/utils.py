@@ -9,7 +9,7 @@ import h5py
 
 pd.set_option('display.max_columns', 500)
 
-rep_path = '/Users/sdbykov/not_work/swarm_energAIser/' #change it here for your local path!
+rep_path = '/Users/armna254/Documents/GitHub/swarm_energAIser/' #change it here for your local path!
 data_path = rep_path+'0_data/'
 plot_path = rep_path+'0_data/plots/'
 
