@@ -5,14 +5,17 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from IPython.display import display
-import h5py
-
+import os
 pd.set_option('display.max_columns', 500)
 
+
+
+
 #rep_path = '/Users/sdbykov/not_work/swarm_energAIser/' #change it here for your local path!
-rep_path = '/Users/sdbykov/not_work/swarm_energAIser/' #change it here for your local path!
+rep_path = os.getcwd().split('swarm_energAIser')[0]+'swarm_energAIser/'
 data_path = rep_path+'0_data/'
-plot_path = rep_path+'0_data/plots/'
+data_path = rep_path+'0_data/'
+
 
 ### matplitlib settings
 
@@ -93,4 +96,66 @@ def set_mpl(palette = 'shap', desat = 0.8):
         sns.set_palette(palette, color_codes = True, desat = desat)
     print('matplotlib settings set')
 set_mpl()
+
+
+
+
+def read_hamelin():
+    print(f"""
+    Loading Hamelin data from {data_path}.
+    Houses number removed: 6, 17, 24, 25. 
+    Houses with PV: ['13', '15', '26', '33'] 
+    HOUSEHOLD and HEATPUMP energy consumption are separated. 
+    Resolution: 60min 
+
+    May-June 2019 data for home #34 excluded 
+    Data before 2018-05-18 excluded (gaps)
+    Data with zero difference between consecutive values dropped (malfunction)
+
+    reutrns:
+    df_energy: pd.DataFrame with energy consumption data
+    df_weather: pd.DataFrame with weather data
+    df_metadata: pd.DataFrame with metadata
+
+    """)
+
+    hamelin_path = data_path+'Hamelin_drive/'
+
+    energy_file = 'hamelin_energy.pkl'
+    metadata_file = 'hamelin_metadata.csv'
+    weather_file = 'hamelin_weather.pkl'
+
+    df_energy = pd.read_pickle(hamelin_path+energy_file)
+    df_metadata = pd.read_csv(hamelin_path+metadata_file,  usecols=[0,1,2], index_col=0)
+    df_weather = pd.read_pickle(hamelin_path+weather_file)
+
+    return [df_energy, df_weather, df_metadata]
+
+
+def read_london():
+    print(f"""
+    Loading London data from {data_path}.
+    Weather from `meteostat` package.
+
+    STD and ToU tariffs are separated.
+    Data resampled (mean) to 1H resolution from original 30min resolution.
+
+    reutrns:
+    df_std: pd.DataFrame with STD tariff data
+    df_tou: pd.DataFrame with ToU tariff data
+    df_weather: pd.DataFrame with weather data
+    
+    """)
+
+    london_path = data_path+'London_drive/'
+
+    std_dile = 'london_std.pkl_gz'
+    tou_file = 'london_tou.pkl_gz'
+    weather_title = 'london_weather.csv'
+
+    df_std = pd.read_pickle(london_path+std_dile, compression='gzip')
+    df_tou = pd.read_pickle(london_path+tou_file, compression='gzip')
+    df_weather = pd.read_csv(london_path+weather_title, index_col=0)
+
+    return [df_std, df_tou, df_weather]
 
