@@ -14,7 +14,6 @@ pd.set_option('display.max_columns', 500)
 #rep_path = '/Users/sdbykov/not_work/swarm_energAIser/' #change it here for your local path!
 rep_path = os.getcwd().split('swarm_energAIser')[0]+'swarm_energAIser/'
 data_path = rep_path+'0_data/'
-data_path = rep_path+'0_data/'
 
 
 ### matplitlib settings
@@ -158,4 +157,25 @@ def read_london():
     df_weather = pd.read_csv(london_path+weather_title, index_col=0)
 
     return [df_std, df_tou, df_weather]
+
+
+
+def add_datetime_features(dfs):
+    dfs_out = []
+    for df in dfs:
+        df = df.copy()
+        df['hour'] = df.index.hour
+        df['weekday'] = df.index.weekday
+        df['month'] = df.index.month
+        df['year'] = df.index.year
+        df['doy'] = df.index.dayofyear
+
+        df['season'] = df['month'].apply(lambda x: 'winter' if x in [12, 1, 2] else 'spring' if x in [3, 4, 5] else 'summer' if x in [6, 7, 8] else 'autumn')
+        df['workday'] = df['weekday'].apply(lambda x: 'workday' if x in [0, 1, 2, 3, 4] else 'weekend')
+
+        dfs_out.append(df)
+    
+    return dfs_out
+
+
 
