@@ -6,6 +6,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from IPython.display import display
 import os
+from scipy import signal
+
 pd.set_option('display.max_columns', 500)
 
 
@@ -155,6 +157,7 @@ def read_london():
     df_std = pd.read_pickle(london_path+std_dile, compression='gzip')
     df_tou = pd.read_pickle(london_path+tou_file, compression='gzip')
     df_weather = pd.read_csv(london_path+weather_title, index_col=0)
+    df_weather.index = pd.to_datetime(df_weather.index)
 
     return [df_std, df_tou, df_weather]
 
@@ -179,3 +182,41 @@ def add_datetime_features(dfs):
 
 
 
+
+
+
+def get_spectrogram(df, target_col, window_size, overlap, plot = False):
+    """
+    gets a spectrogram of a signal.
+    returns a pd.DataFrame with the spectrogram: columns - frequencies, index - time, values - power.
+    if overlap >1, the spectrogram is interpolated linearly to the original time index of the signal.
+    """
+
+    freq, time, S = signal.spectrogram(df[target_col], fs=1,          
+                                    nperseg=window_size, noverlap=overlap,
+                                    scaling='spectrum', mode='psd', detrend='linear', window = 'tukey')
+        
+    S_df = pd.DataFrame(S, index = freq, columns = time)
+    S_df = S_df.T
+    S_df.index = pd.Series(S_df.index).apply(lambda x: df.index[int(x)]).values
+    S_df.drop(columns = 0, inplace = True) #drop 0 Hz
+    S_df.columns = ["{:.2f}".format(x) for x in list((1/S_df.columns))]
+
+    #reindex: if the timestep is not in the spectrogram, fill it with NaN and interpolate linearly
+    S_df = S_df.reindex(df.index).interpolate('linear')
+
+    if plot:
+        fig, [ax1, ax2] =  plt.subplots(nrows=2, ncols = 1, sharex = True, gridspec_kw = {'hspace':0, 'height_ratios': [1,2]}, figsize = (12,12))
+
+
+        ax2.pcolormesh(S_df.index, S_df.columns, np.log10(S_df.T), shading='gouraud', cmap='PiYG')
+        #skip every second y tick and totate it by 45 degrees
+        ax2.set_yticks(S_df.columns[::3])
+        ax2.set_yticklabels(ax2.get_yticklabels(), rotation=45,)
+
+        ax1.plot(df.index, df.iloc[:, 0], 'k-', alpha=0.5, label = 'original')
+
+        plt.ylabel('Frequency [h]')
+        plt.xlabel('Time')
+        plt.show()
+    return S_df
