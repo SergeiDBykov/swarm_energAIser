@@ -163,6 +163,43 @@ def read_london():
 
 
 
+def read_trentino():
+    print(f"""
+    Loading Trentino data from {data_path}.
+
+    Data (energy and telecommunication) are spatially-resolved in grid cells. 
+    For the location of grid cells see geojson file in the same folder (trentino-grid.geojson), e.g. plot it on the website https://geojson.io/.
+
+    
+    Telecommunication Data (sms, calls, internet)  is not resampled, energy consumption data is resampled to 1H resolution.
+    Telecommunication data are only for grid cells with energy consumption data.
+    Telecommunication data is for country-code 39 (Italy) only.
+
+    reutrns:
+    df_telecom: pd.DataFrame with telecom data (sms, calls, internet)  with arbitrary scale for a given cell and datetime.
+    df_line_energy: pd.DataFrame with line energy consumption data. Index - datetime, columns - consumption for each line ID.
+    df_line_location: pd.DataFrame with line ID location (cell). Index - cell ID, LINESET - line ID, NR_UBICAZIONI - number of customers on the line
+    
+
+    """)
+
+
+
+    trentino_path = data_path+'Trentino_drive/'
+
+    telecom_path = trentino_path+'telecom.pkl_gz'
+    line_location_path = trentino_path+'line_location.csv'
+    line_energy_path = trentino_path+'line_energy.csv'
+
+    df_telecom = pd.read_pickle(telecom_path, compression='gzip')
+    df_line_location = pd.read_csv(line_location_path, index_col=0)
+    df_line_energy = pd.read_csv(line_energy_path, index_col=0)
+
+    df_line_energy.index = pd.to_datetime(df_line_energy.index) #todo is this correct?
+
+
+    return [df_telecom, df_line_energy, df_line_location]
+
 def add_datetime_features(dfs):
     dfs_out = []
     for df in dfs:
