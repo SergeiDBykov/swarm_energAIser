@@ -5,6 +5,8 @@ def download_google_trends(geo_id='GB-ENG',
                            show_viz=True):
     
     '''
+    Download Google Trends data with specified region, topics, and years 
+    
     geo_id: The region where the search volumes are collected
     list_primary_use: initial topics of google trends (more relevant topics will be suggested based on these ones)
     start_year, end_year: beginning and ending of collection period
