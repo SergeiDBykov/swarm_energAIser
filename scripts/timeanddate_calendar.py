@@ -1,3 +1,9 @@
+import pandas as pd
+import numpy as np
+
+    
+
+
 def timeanddate_calendar(geo_id='germany',     
                         start_year=2011,
                         end_year=2015):
@@ -10,10 +16,7 @@ def timeanddate_calendar(geo_id='germany',
     show_viz: whether or not the trends plots are displayed during the scraping
     '''
 
-    import pandas as pd
-    import numpy as np
 
-    
     df_holiday = []
     
     for year in np.arange(start_year, end_year+1):

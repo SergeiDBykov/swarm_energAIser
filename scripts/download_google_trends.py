@@ -1,3 +1,17 @@
+import pandas as pd
+import numpy as np
+
+import matplotlib.pyplot as plt
+
+from pytrends.request import TrendReq
+
+import os
+import time
+
+from sklearn.linear_model import LinearRegression
+
+
+
 def download_google_trends(geo_id='GB-ENG',     
                            list_primary_use = ['School','Education','Office'],
                            start_year=2011,
@@ -13,18 +27,7 @@ def download_google_trends(geo_id='GB-ENG',
     show_viz: whether or not the trends plots are displayed during the scraping
     '''
     
-    import pandas as pd
-    import numpy as np
-    
-    import matplotlib.pyplot as plt
-    
-    from pytrends.request import TrendReq
-    
-    import os
-    import time
-    
-    from sklearn.linear_model import LinearRegression
-    
+
     # Collect suggested topics based on given ones
     df_suggs = pd.DataFrame()
     for category in list_primary_use:
