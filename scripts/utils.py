@@ -10,9 +10,6 @@ from scipy import signal
 
 pd.set_option('display.max_columns', 500)
 
-
-
-
 #rep_path = '/Users/sdbykov/not_work/swarm_energAIser/' #change it here for your local path!
 rep_path = os.getcwd().split('swarm_energAIser')[0]+'swarm_energAIser/'
 data_path = rep_path+'0_data/'
@@ -126,9 +123,18 @@ def read_hamelin():
     metadata_file = 'hamelin_metadata.csv'
     weather_file = 'hamelin_weather.pkl'
 
-    df_energy = pd.read_pickle(hamelin_path+energy_file)
-    df_metadata = pd.read_csv(hamelin_path+metadata_file,  usecols=[0,1,2], index_col=0)
-    df_weather = pd.read_pickle(hamelin_path+weather_file)
+    try:
+
+        df_energy = pd.read_pickle(hamelin_path+energy_file)
+        df_metadata = pd.read_csv(hamelin_path+metadata_file,  usecols=[0,1,2], index_col=0)
+        df_weather = pd.read_pickle(hamelin_path+weather_file)
+    except:
+        print('(Windows load)')
+
+        df_energy = pd.read_pickle((hamelin_path+energy_file).replace('/', '\\'))
+        df_metadata = pd.read_csv((hamelin_path+metadata_file).replace('/', '\\'),  usecols=[0,1,2], index_col=0)
+        df_weather = pd.read_pickle((hamelin_path+weather_file).replace('/', '\\'))
+
 
     return [df_energy, df_weather, df_metadata]
 
@@ -154,11 +160,19 @@ def read_london():
     tou_file = 'london_tou.pkl_gz'
     weather_title = 'london_weather.csv'
 
-    df_std = pd.read_pickle(london_path+std_dile, compression='gzip')
-    df_tou = pd.read_pickle(london_path+tou_file, compression='gzip')
-    df_weather = pd.read_csv(london_path+weather_title, index_col=0)
-    df_weather.index = pd.to_datetime(df_weather.index)
 
+    try:
+        df_std = pd.read_pickle(london_path+std_dile, compression='gzip')
+        df_tou = pd.read_pickle(london_path+tou_file, compression='gzip')
+        df_weather = pd.read_csv(london_path+weather_title, index_col=0)
+        df_weather.index = pd.to_datetime(df_weather.index)
+    except:
+        print('(Windows load)')
+        df_std = pd.read_pickle((london_path+std_dile).replace('/', '\\'), compression='gzip')
+        df_tou = pd.read_pickle((london_path+tou_file).replace('/', '\\'), compression='gzip')
+        df_weather = pd.read_csv((london_path+weather_title).replace('/', '\\'), index_col=0)
+        df_weather.index = pd.to_datetime(df_weather.index)
+        
     return [df_std, df_tou, df_weather]
 
 
@@ -191,9 +205,16 @@ def read_trentino():
     line_location_path = trentino_path+'line_location.csv'
     line_energy_path = trentino_path+'line_energy.csv'
 
-    df_telecom = pd.read_pickle(telecom_path, compression='gzip')
-    df_line_location = pd.read_csv(line_location_path, index_col=0)
-    df_line_energy = pd.read_csv(line_energy_path, index_col=0)
+
+    try:
+        df_telecom = pd.read_pickle(telecom_path, compression='gzip')
+        df_line_location = pd.read_csv(line_location_path, index_col=0)
+        df_line_energy = pd.read_csv(line_energy_path, index_col=0)
+    except:
+        print('(Windows load)')
+        df_telecom = pd.read_pickle(telecom_path.replace('/', '\\'), compression='gzip')
+        df_line_location = pd.read_csv(line_location_path.replace('/', '\\'), index_col=0)
+        df_line_energy = pd.read_csv(line_energy_path.replace('/', '\\'), index_col=0)
 
     df_line_energy.index = pd.to_datetime(df_line_energy.index) #todo is this correct?
 
