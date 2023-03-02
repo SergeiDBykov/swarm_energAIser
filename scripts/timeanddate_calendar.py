@@ -25,7 +25,7 @@ def timeanddate_calendar(geo_id='germany',
         holiday_temp = pd.read_html('https://www.timeanddate.com/holidays/'+geo_id+'/'+str(year)+'?hol=9')[0]
         holiday_temp.columns = holiday_temp.columns.get_level_values(0)
         holiday_temp = holiday_temp[~holiday_temp['Date'].str.contains('Observed').fillna(False)]
-        holiday_temp = holiday_temp[holiday_temp['Type'].str.contains('National').fillna(False)]
+        holiday_temp = holiday_temp[holiday_temp['Type'].str.contains('oliday').fillna(False)]
         holiday_temp = holiday_temp.dropna(how='all')
         holiday_temp = holiday_temp[['Date', 'Name', 'Type']]
         holiday_temp['Date'] = str(year) + ' ' + holiday_temp['Date']
