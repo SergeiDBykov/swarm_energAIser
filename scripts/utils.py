@@ -151,6 +151,7 @@ def read_london():
     df_std: pd.DataFrame with STD tariff data
     df_tou: pd.DataFrame with ToU tariff data
     df_weather: pd.DataFrame with weather data
+    df_twitter: pd.DataFrame with twitter data (see `0_data/2.2_london_twitter.ipynb` for details)
     
     """)
 
@@ -159,6 +160,7 @@ def read_london():
     std_dile = 'london_std.pkl_gz'
     tou_file = 'london_tou.pkl_gz'
     weather_title = 'london_weather.csv'
+    twitter_file = 'twitter_london.pkl'
 
 
     try:
@@ -166,14 +168,18 @@ def read_london():
         df_tou = pd.read_pickle(london_path+tou_file, compression='gzip')
         df_weather = pd.read_csv(london_path+weather_title, index_col=0)
         df_weather.index = pd.to_datetime(df_weather.index)
+        df_twitter = pd.read_pickle(london_path+twitter_file)
     except:
         print('(Windows load)')
         df_std = pd.read_pickle((london_path+std_dile).replace('/', '\\'), compression='gzip')
         df_tou = pd.read_pickle((london_path+tou_file).replace('/', '\\'), compression='gzip')
         df_weather = pd.read_csv((london_path+weather_title).replace('/', '\\'), index_col=0)
         df_weather.index = pd.to_datetime(df_weather.index)
+        df_twitter = pd.read_pickle((london_path+twitter_file).replace('/', '\\'))
         
-    return [df_std, df_tou, df_weather]
+    df_twitter.index = df_twitter.index.tz_convert(None) #remove timezone info
+    
+    return [df_std, df_tou, df_weather, df_twitter]
 
 
 
