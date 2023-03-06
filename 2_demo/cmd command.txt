@@ -1,0 +1,2 @@
+streamlit run C:\Users\user\swarm_energAIser\2_demo\uber_pickups.py
+streamlit run C:\Users\user\swarm_energAIser\2_demo\london_demo.py
