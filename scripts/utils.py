@@ -178,7 +178,8 @@ def read_london():
         df_twitter = pd.read_pickle((london_path+twitter_file).replace('/', '\\'))
         
     df_twitter.index = df_twitter.index.tz_convert(None) #remove timezone info
-    
+    df_twitter = df_twitter.resample('1H').sum() #resample to 1H
+
     return [df_std, df_tou, df_weather, df_twitter]
 
 

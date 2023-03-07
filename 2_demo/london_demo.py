@@ -161,16 +161,18 @@ def model_train(_train, _val, _datetime_covatiates, _hodidays_covariates, _frequ
     lags_horizon = 24
     model_naive = _val.shift(+24*7) #repeat value from 24*7 hours ago
     model_naive_train = _train.shift(+24*7) 
-    model_catb = CatBoostModel(lags_future_covariates = (_lags_horizon, _lags_horizon) , lags_past_covariates=lags_horizon,
-                        )#learning_rate = 0.007, num_trees = 1000, early_stopping_rounds = 5)
-    model_lgbm = LightGBMModel(lags_future_covariates = (_lags_horizon, _lags_horizon) , lags_past_covariates=lags_horizon,
-                        )#learning_rate = 0.007, num_trees = 1000, early_stopping_rounds = 5)
+    model_catb = CatBoostModel(lags_future_covariates = (_lags_horizon, _lags_horizon) , lags_past_covariates=lags_horizon,)
+                        #)#learning_rate = 0.007, num_trees = 1000, early_stopping_rounds = 5)
+    #model_lgbm = LightGBMModel(lags_future_covariates = (_lags_horizon, _lags_horizon) , lags_past_covariates=lags_horizon,
+                        #)#learning_rate = 0.007, num_trees = 1000, early_stopping_rounds = 5)
     cov_args = {"future_covariates": [_datetime_covatiates, _hodidays_covariates],
             "past_covariates": [_frequency_covariates]}
     model_catb.fit(_train, **cov_args)
-    model_lgbm.fit(_train, **cov_args)
-    models = [model_naive, model_catb, model_lgbm]
-    names = ['naive',  'catboost', 'LightGBMModel']
+    #model_lgbm.fit(_train, **cov_args)
+    #models = [model_naive, model_catb, model_lgbm]
+    models = [model_naive, model_catb]
+    #names = ['naive',  'catboost', 'LightGBMModel']
+    names = ['naive',  'catboost']
     return models, names, model_naive_train
 
 def user_input_features():
@@ -270,7 +272,8 @@ if show_train_val:
 
 # Define and train models
 models, names, model_naive_train = model_train(train, val, datetime_covatiates, hodidays_covariates, frequency_covariates, _lags_horizon=24)
-model_naive, model_catb, model_lgbm = models
+#model_naive, model_catb, model_lgbm = models
+model_naive, model_catb = models
 
 # Plot of modeling results (static plot in matplotlib)
 fig,  ax =  plt.subplots( figsize = (12,6))

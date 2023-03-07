@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-
+import locale
     
 
 
@@ -25,11 +25,20 @@ def timeanddate_calendar(geo_id='germany',
         holiday_temp = pd.read_html('https://www.timeanddate.com/holidays/'+geo_id+'/'+str(year)+'?hol=9')[0]
         holiday_temp.columns = holiday_temp.columns.get_level_values(0)
         holiday_temp = holiday_temp[~holiday_temp['Date'].str.contains('Observed').fillna(False)]
-        holiday_temp = holiday_temp[holiday_temp['Type'].str.contains('oliday').fillna(False)]
+        holiday_temp = holiday_temp[holiday_temp['Type'].str.contains('Holiday').fillna(False)]
         holiday_temp = holiday_temp.dropna(how='all')
         holiday_temp = holiday_temp[['Date', 'Name', 'Type']]
         holiday_temp['Date'] = str(year) + ' ' + holiday_temp['Date']
-        holiday_temp['Date'] = pd.to_datetime(holiday_temp['Date'])
+        try:
+            holiday_temp['Date'] = pd.to_datetime(holiday_temp['Date'])
+        except:
+            #change date from german to english, 3 letter month to full month in english and german
+            months_dict_de_en = {'Jan':'Jan', 'Feb':'Feb', 'Mär':'Mar', 'Apr':'Apr', 'Mai':'May', 'Jun':'Jun', 'Jul':'Jul', 'Aug':'Aug', 'Sep':'Sep', 'Okt':'Oct', 'Nov':'Nov', 'Dez':'Dec'}
+            for k, v in months_dict_de_en.items():
+                holiday_temp['Date'] = holiday_temp['Date'].str.replace(k, v)
+            
+            holiday_temp['Date'] = pd.to_datetime(holiday_temp['Date'])
+
         
         df_holiday.append(holiday_temp)
         
