@@ -11,8 +11,21 @@ from scipy import signal
 pd.set_option('display.max_columns', 500)
 
 #rep_path = '/Users/sdbykov/not_work/swarm_energAIser/' #change it here for your local path!
-rep_path = os.getcwd().split('swarm_energAIser')[0]+'swarm_energAIser/'
-data_path = rep_path+'0_data/'
+# rep_path = os.getcwd().split('swarm_energAIser')[0]+'swarm_energAIser/'
+# data_path = rep_path+'0_data/'
+
+import os
+import sys
+import platform
+from pathlib import Path
+FILE = Path(__file__).resolve()
+rep_path = FILE.parents[0].parents[0]  # root directory
+if str(rep_path) not in sys.path:
+    sys.path.append(str(rep_path))  # add ROOT to PATH
+if platform.system() != 'Windows':
+    rep_path = Path(os.path.relpath(rep_path, Path.cwd()))  # relative
+print(rep_path)
+data_path = os.path.join(rep_path , '0_data/')
 
 
 ### matplitlib settings
