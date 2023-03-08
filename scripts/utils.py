@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from IPython.display import display
 import os
 from scipy import signal
+import streamlit as st
 
 pd.set_option('display.max_columns', 500)
 
@@ -30,7 +31,7 @@ data_path = os.path.join(rep_path , '0_data/')
 
 ### matplitlib settings
 
-def set_mpl(palette = 'shap', desat = 0.8):
+def set_mpl(palette = 'energaiser', desat = 0.8):
 
     # matplotlib.use('MacOSX') 
     rc = {
@@ -103,11 +104,21 @@ def set_mpl(palette = 'shap', desat = 0.8):
         #colors from shap package: https://github.com/slundberg/shap, + my own pairing of colors
         cp = sns.color_palette( ["#1E88E5", "#1e25e5", "#ff0d57", "#ff5a8c",  "#13B755", "#2de979","#7C52FF", "#b69fff", "#FFC000", "#ffd34d","#00AEEF", '#3dcaff'])
         sns.set_palette(cp, color_codes = True, desat = desat)
+    elif palette == 'energaiser':
+        #our color codes
+        #5cbd9e
+        #195a6a
+        #76a362
+        #F7ee0c
+        #F07318
+        #59ae75
+        cp = sns.color_palette( ["#f7ee0d", "#6ad0a9", "#f07318", "#5aae74", "#195a6a", "#f74200"])
+        sns.set_palette(cp, color_codes = True, desat = desat)
+
     else:
         sns.set_palette(palette, color_codes = True, desat = desat)
     print('matplotlib settings set')
 set_mpl()
-
 
 
 
@@ -135,6 +146,7 @@ def read_hamelin():
     energy_file = 'hamelin_energy.pkl'
     metadata_file = 'hamelin_metadata.csv'
     weather_file = 'hamelin_weather.pkl'
+    twitter_file = 'hamelin_twitter.pkl'
 
     try:
 
@@ -150,7 +162,6 @@ def read_hamelin():
 
 
     return [df_energy, df_weather, df_metadata]
-
 
 def read_london():
     print(f"""
@@ -194,7 +205,6 @@ def read_london():
     df_twitter = df_twitter.resample('1H').sum() #resample to 1H
 
     return [df_std, df_tou, df_weather, df_twitter]
-
 
 
 def read_trentino():

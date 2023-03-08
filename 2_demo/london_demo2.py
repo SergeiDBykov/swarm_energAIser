@@ -146,7 +146,7 @@ def geomap_pydeck(lat, lon, number_units):
     ))
 
 #%%
-@st.cache_data
+
 def read_data():
     """A wrapper for data reading with st.cache_data decorator"""
     # global data_load_state
