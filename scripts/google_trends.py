@@ -33,7 +33,7 @@ def download_google_trends(geo_id='GB-ENG',
     for category in list_primary_use:
         try:
             #print(category)
-            pytrends = TrendReq(hl='en-US', tz=360)
+            pytrends = TrendReq(hl='en-US', tz=360, proxies=['https://34.203.233.13:80','https://35.201.123.31:880'])
             kw_list = [category]
             pytrends.build_payload(kw_list)
             suggs = pytrends.related_topics()
@@ -67,12 +67,12 @@ def download_google_trends(geo_id='GB-ENG',
                 year = str(int(year))
                 df_trend_temp = pd.DataFrame()
     
-                pytrends = TrendReq(hl='en-US', tz=360)
+                pytrends = TrendReq(hl='en-US', tz=360, proxies=['https://34.203.233.13:80','https://35.201.123.31:880'])
                 pytrends.build_payload([mid], timeframe= year +'-01-01 ' + year + '-07-01',geo=geo_id,gprop='')
                 df_trend_temp_half1 = pytrends.interest_over_time()
                 time.sleep(1)
     
-                pytrends = TrendReq(hl='en-US', tz=360)
+                pytrends = TrendReq(hl='en-US', tz=360, proxies=['https://34.203.233.13:80','https://35.201.123.31:880'])
                 pytrends.build_payload([mid], timeframe= year +'-06-01 ' + year + '-12-31',geo=geo_id,gprop='')
                 df_trend_temp_half2 = pytrends.interest_over_time()
                 time.sleep(1)
