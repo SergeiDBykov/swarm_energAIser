@@ -44,11 +44,11 @@ set_mpl()
 
 #Page title
 st.set_page_config(
-    page_title="Siemens 2023 Hackathon - Tech for Sustainability",
+    page_title="energAIser - Siemens 2023 Hackathon - Tech for Sustainability",
 )
 st.markdown('# London dataset')
 
-
+############ Functions ############ 
 
 #DATE_COLUMN = 'date/time'
 #DATA_URL = ('https://s3-us-west-2.amazonaws.com/'
@@ -59,50 +59,59 @@ st.markdown('# London dataset')
 # data_path = r'C:\Users\user\swarm_energAIser\0_data'
 data_path = os.path.join(ROOT, "0_data")
 
+# @st.cache_data
+# def read_data():
+#     """
+#     # Read the data from the dataset
+#     """
+
+#     print(f"""
+#     Loading London data from {data_path}.
+#     Weather from `meteostat` package.
+#     STD and ToU tariffs are separated.
+#     Data resampled (mean) to 1H resolution from original 30min resolution.
+#     reutrns:
+#     df_std: pd.DataFrame with STD tariff data
+#     df_tou: pd.DataFrame with ToU tariff data
+#     df_weather: pd.DataFrame with weather data
+#     df_twitter: pd.DataFrame with twitter data (see `0_data/2.2_london_twitter.ipynb` for details)
+    
+#     """)
+
+#     london_path = data_path+'/London_drive/'
+
+#     std_dile = 'london_std.pkl_gz'
+#     tou_file = 'london_tou.pkl_gz'
+#     weather_title = 'london_weather.csv'
+#     twitter_file = 'twitter_london.pkl'
+
+#     try:
+#         df_std = pd.read_pickle(london_path+std_dile, compression='gzip')
+#         df_tou = pd.read_pickle(london_path+tou_file, compression='gzip')
+#         df_weather = pd.read_csv(london_path+weather_title, index_col=0)
+#         df_weather.index = pd.to_datetime(df_weather.index)
+#         df_twitter = pd.read_pickle(london_path+twitter_file)
+#     except:
+#         print('(Windows load)')
+#         df_std = pd.read_pickle((london_path+std_dile).replace('/', '\\'), compression='gzip')
+#         df_tou = pd.read_pickle((london_path+tou_file).replace('/', '\\'), compression='gzip')
+#         df_weather = pd.read_csv((london_path+weather_title).replace('/', '\\'), index_col=0)
+#         df_weather.index = pd.to_datetime(df_weather.index)
+#         df_twitter = pd.read_pickle((london_path+twitter_file).replace('/', '\\'))
+        
+#     df_twitter.index = df_twitter.index.tz_convert(None) #remove timezone info
+    
+#     return [df_std, df_tou, df_weather, df_twitter]
 
 @st.cache_data
-def read_london():
-    """
-    # Read the data from the dataset
-    """
-
-    print(f"""
-    Loading London data from {data_path}.
-    Weather from `meteostat` package.
-    STD and ToU tariffs are separated.
-    Data resampled (mean) to 1H resolution from original 30min resolution.
-    reutrns:
-    df_std: pd.DataFrame with STD tariff data
-    df_tou: pd.DataFrame with ToU tariff data
-    df_weather: pd.DataFrame with weather data
-    df_twitter: pd.DataFrame with twitter data (see `0_data/2.2_london_twitter.ipynb` for details)
-    
-    """)
-
-    london_path = data_path+'/London_drive/'
-
-    std_dile = 'london_std.pkl_gz'
-    tou_file = 'london_tou.pkl_gz'
-    weather_title = 'london_weather.csv'
-    twitter_file = 'twitter_london.pkl'
-
-    try:
-        df_std = pd.read_pickle(london_path+std_dile, compression='gzip')
-        df_tou = pd.read_pickle(london_path+tou_file, compression='gzip')
-        df_weather = pd.read_csv(london_path+weather_title, index_col=0)
-        df_weather.index = pd.to_datetime(df_weather.index)
-        df_twitter = pd.read_pickle(london_path+twitter_file)
-    except:
-        print('(Windows load)')
-        df_std = pd.read_pickle((london_path+std_dile).replace('/', '\\'), compression='gzip')
-        df_tou = pd.read_pickle((london_path+tou_file).replace('/', '\\'), compression='gzip')
-        df_weather = pd.read_csv((london_path+weather_title).replace('/', '\\'), index_col=0)
-        df_weather.index = pd.to_datetime(df_weather.index)
-        df_twitter = pd.read_pickle((london_path+twitter_file).replace('/', '\\'))
-        
-    df_twitter.index = df_twitter.index.tz_convert(None) #remove timezone info
-    
-    return [df_std, df_tou, df_weather, df_twitter]
+def read_data():
+    """A wrapper for data reading with st.cache_data decorator"""
+    # global data_load_state
+    data_load_state = st.text('Loading data...')
+    # df_std, df_tou, df_weather, df_twitter = read_london()
+    df_std, df_tou, df_weather, df_twitter = read_london()
+    data_load_state.text("Data loading done!")
+    return df_std, df_tou, df_weather, df_twitter
 
 
 @st.cache_data
@@ -116,7 +125,7 @@ def data_cleaning(data_std):
 
 
 @st.cache_data
-def process_data(data, _cols):
+def process_data(data, _cols, house_number):
     """ Clustering and get spectrogram"""
     data_cluster = data[_cols[ (data[_cols].mean() > 0.1) & (data[cols].mean() < 0.13) ]]
     data_cluster = data_cluster.sample(n=house_number, axis=1, random_state=2023)
@@ -129,7 +138,7 @@ def process_data(data, _cols):
     return power_avg, power_avg_spe, power_avg_spe
 
 @st.cache_data
-def data_preparation():
+def data_preparation(power_avg, weather):
     """Prepare dataset for modeling"""
     df_dataset = power_avg.rename(columns={'power_avg':'load'}).copy()
     df_dataset = df_dataset.asfreq('H')
@@ -160,21 +169,24 @@ def data_preparation():
 
     return df_dataset
 
-def data_split(data, tp='2013-01-01'):
-    """split time series for training, validation and test """
+def data_split(data, tp='2013-01-01', train_ratio=0.6, val_ratio=0.5):
+    """split time series for training, validation and test 
+    train_ratio = ratio of train - train + val + test
+    val_ratio   = ratio of val - val + test
+    """
 
-    ratio_train, ratio_val, ratio_test = 0.6, 0.2, 0.2
+    
     data = data.loc[:tp]
-    train = data.iloc[:round(len(data)*ratio_train)]
-    test = data.iloc[-round(len(data)*ratio_test):]
+    train = data.iloc[:round(len(data)*train_ratio)]
+    test = data.iloc[-round(len(data)*((1-train_ratio)*(1-val_ratio))):]
     val = data.drop(train.index).drop(test.index)
 
     return train, val, test
 
 @st.cache_resource
-def model_train(): 
+def model_train(_train): 
     """Define and train models"""
-    traindata = train.dropna()
+    traindata = _train.dropna()
     list_feat = list(traindata.select_dtypes(['int','float']).columns)
     list_feat.remove('load')
     
@@ -227,20 +239,22 @@ def user_input_features():
         }
     return user_inputs
     
-data_load_state = st.sidebar.text('Loading data...')
-data_std, _, weather, twitter = read_london()
-data_load_state.text("Done! (using st.cache_data)")
 
+
+
+############ Layout ############ 
 st.sidebar.header('User Input Parameters')
 
+############ Input ############ 
 inputs = user_input_features()
+# data_load_state.text("Done! (using st.cache_data)")
+
+# data_load_state = st.sidebar.text('Loading data...')
+
 horizon_str, house_number = inputs['horizon_str'], inputs['house_number']
 show_raw, show_preprocess, show_train_val = \
     inputs['show_raw'], inputs['show_preprocess'], inputs['show_train_val']
 
-
-
-    
 # st.markdown('## 1. Modeling settings')
 # # Setting of prediction horizon
 # st.markdown('### 1.1 Prediction horison:')
@@ -261,9 +275,11 @@ elif horizon_str == '1 Week (7days)':
 # show_raw = st.button('Show raw data')
 # if show_raw:
 
-st.write('#### Aggregating ', house_number, ' houses, training model to predict for ', horizon_str)
+############ Output ############ 
+st.sidebar.write('#### Training model to predict substations of size ', house_number, ' for ', horizon_str)
 
-# st.markdown('## 2. Data preprocessing')
+# read data   
+data_std, df_tou, df_weather, df_twitter = read_data()
 
 # Data cleaning
 data, homes_col, cols = data_cleaning(data_std)
@@ -272,7 +288,7 @@ data, homes_col, cols = data_cleaning(data_std)
 #select homes with mean energy consumption above between 0.1 and 0.13
 # Average energy use by indicated number of house_number
 # To-do: instead of random sampling, select houses around median to avoid outliers
-power_avg, power_avg_spe, power_avg_spe = process_data(data, cols)
+power_avg, power_avg_spe, power_avg_spe = process_data(data, cols, house_number)
 
 if show_raw:
     st.markdown('### Showing the first 100 samples of raw data')
@@ -284,7 +300,7 @@ if show_preprocess:
 
 
 # Prepare dataset for modeling
-df_dataset = data_preparation()
+df_dataset = data_preparation(power_avg, df_weather)
 
 # Split and preprocess the dataset
 train, val, test = data_split(df_dataset)
@@ -299,7 +315,7 @@ if show_train_val:
     st.pyplot(fig)
 
 # Define and train models
-models_1day, models_1week, names, list_feat = model_train()
+models_1day, models_1week, names, list_feat = model_train(train)
 
 y_test_1day = []
 y_test_1week = []
