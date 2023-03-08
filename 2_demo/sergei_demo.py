@@ -8,6 +8,7 @@ from scripts.data_and_models import *
 import streamlit as st
 #import streamlit.components.v1 as components
 #import mpld3 #conda install mpld3
+import plotly
 import plotly.express as px
 import plotly.graph_objects as go
 
@@ -62,11 +63,11 @@ if country=='London, UK':
     fig.add_vline(x=start_date)
 
 
+    plt_twitter =  st.checkbox('Plot tweets volume', value = 0)
+    show_full_metrics = st.checkbox('Show full metrics', value = 0)
 
-
-    #ask whether to proceed with the forecast
-
-    if st.button('Forecast'):
+    start_forecast = st.button('Forecast')
+    if start_forecast:
         st.write('Forecasting...')
 
         predict_dict = predict_london(london_dict, start_date, horizon = horizon)
@@ -89,7 +90,12 @@ if country=='London, UK':
                             mode='lines',
                             name='test'))   
 
-        for model_name in ['Naive', 'EAI (no human behaviour)', 'EAI',  'Ensemble']:
+        if show_full_metrics:
+            list_of_models = ['Naive', 'EAI (no human behaviour)', 'EAI',  'Ensemble']
+        else:
+            list_of_models = ['Naive', 'EAI (no human behaviour)', 'EAI']
+
+        for model_name in list_of_models:
             model_df = predict_dict[model_name]['pred_test'].pd_dataframe()
             fig.add_trace(go.Scatter(x=model_df.index, y=model_df['power_avg'],
                             mode='lines',
@@ -110,19 +116,44 @@ if country=='London, UK':
 
         st.plotly_chart(fig)
 
-        st.write(predict_dict['metrics'])
+        metrics = predict_dict['metrics']
+        
+        st.write('MAPE error metrics:')
+        st.write(metrics.query('model in ["Naive", "EAI"]').loc['mape', :][['Week ahead']])
 
 
-        # if st.button('Plot tweets volume'):
+        if show_full_metrics:
+            st.write('MAPE error metrics:')
+            st.write(metrics.loc['mape', :][['Week ahead', 'Last week']])
+            st.write('SMAPE error metrics:')
+            st.write(metrics.loc['smape', :][['Week ahead', 'Last week']])
 
-        #     #TODO IT RELOAD THE WHOLE FORECAST FOR SOME REASON
-        #     tweets_df = london_dict['tweets'].pd_dataframe()
-        #     twets_clipped = tweets_df.loc[start_date:start_date+pd.Timedelta(hours = horizon)]
-        #     fig = go.Figure()
-        #     fig.add_trace(go.Scatter(x=twets_clipped.index, y=twets_clipped['tweets_total'],
-        #                         mode='lines',
-        #                         name='tweets'))
-        #     st.plotly_chart(fig)
+
+        if plt_twitter:
+            #plot twitter data and energy consumption on the same figure with two y axes
+            tweets_df = london_dict['darts_dict']['twitter_covariate'].pd_dataframe()
+            twets_clipped = tweets_df.loc[start_date:start_date+pd.Timedelta(hours = horizon)]
+            
+            fig = plotly.subplots.make_subplots(specs=[[{"secondary_y": True}]])
+
+            # Add traces
+            fig.add_trace(go.Scatter(x=twets_clipped.index, y=twets_clipped['tweets_total'],
+                                mode='lines',
+                                name='tweets'),
+                                secondary_y=False)
+
+            fig.add_trace(go.Scatter(x=test_df.head(horizon).index, y=test_df.head(horizon)['power_avg'],
+                            mode='lines',
+                            name = 'Energy'), secondary_y=True)   
+
+            # Set x-axis title
+            fig.update_xaxes(title_text="Date")
+
+            # Set y-axes titles
+            fig.update_yaxes(title_text="Tweets per hour", secondary_y=False)
+            fig.update_yaxes(title_text="Hourly energy consumption", secondary_y=True)
+
+            st.plotly_chart(fig)
 
 
 

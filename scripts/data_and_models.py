@@ -181,26 +181,48 @@ def predict_london(input_dict, timestamp = '2013-03-07', horizon = 24*7):
     output_dict['test'] = test
 
 
-    metrics_dict = {}
+    #make metrics_dict with all metrics for all models
+    #for each model dictuonary should have train and test values for each metric
+    #e.g. {'Naive': {'train': {'mape': 0.1, 'smape': 0.2}, 'test': {'mape': 0.1, 'smape': 0.2}}} etc
 
-    for metrics in [mape, smape]:
-        for model_name in ['Naive', 'EAI (no human behaviour)', 'EAI',  'Ensemble']:
+
+    #list of dict 
+    list_metrics_dict = []
+
+    for model_name in ['Naive', 'EAI (no human behaviour)', 'EAI',  'Ensemble']:
+        for metrics in [mape, smape]:
+            metrics_name = metrics.__name__
             pred_train = output_dict[model_name]['pred_train']
             pred_test = output_dict[model_name]['pred_test']
 
             metrics_train =metrics(pred_train, output_dict['train'].tail(horizon))
             metrics_test = metrics(pred_test, output_dict['test'].head(horizon))
 
-            metrics_dict[model_name] = {'train': metrics_train, 'test': metrics_test}
+            list_metrics_dict.append({'model': model_name, 'metrics': metrics_name, 'train': metrics_train, 'test': metrics_test})
 
-    df_metrics = pd.DataFrame(metrics_dict).T
+
+
+    df_metrics = pd.DataFrame(list_metrics_dict).set_index(['metrics', 'model'])
 
     #two decimal points format but not using round to avoid rounding errors
     df_metrics = df_metrics.applymap(lambda x: f'{x:.2f}')
 
-    df_metrics = df_metrics.T
+
+    #df_metrics = df_metrics.T
+
+    if horizon == 24*7:
+        # make test be 'Week ahead' and train be 'Week before'
+        df_metrics = df_metrics.rename(columns={'train': 'Last week', 'test': 'Week ahead'})
+    elif horizon == 24:
+        # make test be 'Day ahead' and train be 'Day before'
+        df_metrics = df_metrics.rename(columns={'train': 'Last day', 'test': 'Day ahead'})
+    else:
+        pass
+    
+    df_metrics = df_metrics.sort_index(level=0)
 
     output_dict['metrics'] = df_metrics
+
 
     return output_dict
 
