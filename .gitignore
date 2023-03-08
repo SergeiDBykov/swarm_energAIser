@@ -5,4 +5,9 @@
 0_data/swarm_data alias
 1_exploratory_analysis/97_twitter
 *json
+*__pycache__
 *csv
+doc/.DS_Store
+*.pyc
+*.pyc
+*.pyc
