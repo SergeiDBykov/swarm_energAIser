@@ -114,10 +114,10 @@ if country=='London, UK':
                             name=model_name))
         
         fig.update_layout(
-            title="Train and test data",
+            title="Forecast",
             xaxis_title="Date",
             yaxis_title="Power consumption (scaled)",
-            legend_title="Legend Title",
+            legend_title="Models",
             font=dict(
                 family="Courier New, monospace",
                 size=18,
