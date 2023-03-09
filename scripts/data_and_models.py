@@ -29,15 +29,16 @@ from sklearn.preprocessing import MaxAbsScaler
 from darts.models import LightGBMModel, LinearRegressionModel
 
 
-
+import geopandas as gpd
 import streamlit as st
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import xarray as xr
-
-
+import contextily as ctx
+import plotly.graph_objects as go
+data_path = os.path.join(ROOT , '0_data/')
 
 
 #add decorator st.cache to make it faster to read_london
@@ -487,70 +488,145 @@ def read_hamelin():
 
 
 @st.cache_data
-def read_trentino(nmin=100, nmax=400, cellsmax=2, ids_residential=[2738, 5201, 5230]):
-    telecom,energy,lines, twitter = read_trentino_orig()
+def read_trentino():
+    telecom, energy, lines, twitter = read_trentino_orig()
 
-    lines_sum = lines.reset_index(inplace=False).groupby("LINESET")\
-        .agg({"SQUAREID": "count", "NR_UBICAZIONI": "sum"})\
-            .rename(columns={"SQUAREID": "n_cells", "NR_UBICAZIONI": "n_customers"})\
-            .sort_values(by=["n_cells", "n_customers"])
-    
-    cells_sum = lines.reset_index(inplace=False).groupby("SQUAREID")\
-    .agg({"LINESET": "count", "NR_UBICAZIONI": "sum"})\
-            .rename(columns={"LINESET": "n_lines", "NR_UBICAZIONI": "n_customers"})\
-            .sort_values(by=["n_lines", "n_customers"])
-
-    # filter
-    query = "n_customers >= @nmin and n_customers <= @nmax and n_cells <= @cellsmax"
-    lines_select = lines_sum.query(query)
-
-    # find all cells served by these eligible lines
-    cell_lines = pd.merge(lines_select, lines, left_index=True, right_on="LINESET")
-
-    # # these eligible cells are served by not only those eligible lines
-    # cells_select = pd.merge(cell_lines.drop(columns=["LINESET", "NR_UBICAZIONI", "n_customers", "n_cells"]), cells_sum, left_index=True, right_index=True, how="left")
-
-    energy_ = energy.transpose().reset_index()
-    energy_.rename(columns={"index": "LINE"}, inplace=True)
-
-    # energy for each square - lineset combination
-    line_energy = pd.merge(lines.reset_index(), energy_, left_on="LINESET", right_on="LINE")
-
-    # each LINESET serves one or more CELLs
-    line_cell = lines.reset_index(inplace=False, drop=False).groupby("LINESET").agg({"SQUAREID": "count", "NR_UBICAZIONI": "sum"})
-    line_cell.rename(columns = {"SQUAREID": "n_cells", "NR_UBICAZIONI": "n_clients"}, inplace=True)
-
-    # each CELL has one or more LINESET passing
-    cell_line = lines.reset_index(inplace=False, drop=False).groupby("SQUAREID").agg({"LINESET": "count", "NR_UBICAZIONI": "sum"})
-    cell_line.rename(columns = {"LINESET": "n_lines", "NR_UBICAZIONI": "n_clients"}, inplace=True)
-    cell_line.sort_values(by=["n_clients", "n_lines"], inplace=True)
-
-    
-    ids_residential.sort()
-    lines_residential = list(cell_lines.query("index in @ids_residential")['LINESET'].sort_index())
-
-    # update line_energy by removing energy negative records
-    cols_ts = list(set(line_energy.columns) - set(['SQUAREID', 'LINESET', 'NR_UBICAZIONI', 'LINE'])) # timestamp columns
-
-    line_energy = line_energy.loc[(line_energy[cols_ts]>=0).all(axis=1), :]
-
-    # energy_select = line_energy.query("SQUAREID in @ids_residential and LINESET in @lines_residential")
-
-
-
+    gridfile = data_path+'Trentino_drive/trentino-grid.geojson'
+    grid = gpd.read_file(gridfile)
+    grid = grid.to_crs(epsg=3857)
+    grid['NR_UBICAZIONI'] = grid['cellId'].map(lines.reset_index(drop = False, inplace = False).groupby('SQUAREID')['NR_UBICAZIONI'].sum())
     output_dict = {
-        'original_dataset': {
-            'telecom': telecom,
-        },
-        'processed': {
-            'line_energy': line_energy,
-            'cols_ts': cols_ts,
-            'lines': lines_residential,
-            'cell_lines': cell_lines
-        }
-        
-        }
+        "telecom": telecom, 
+        "energy": energy, 
+        "lines": lines, 
+        "twitter": twitter,
+        "grid": grid 
+    }
     return output_dict
+
+def plot_map_orig(grid):
+    fig,  ax =  plt.subplots(1,1, figsize = (5,5))
+    grid.plot(ax = ax, color = 'r', alpha = 0.2) 
+    grid.plot(ax = ax, column = 'NR_UBICAZIONI', legend = False, alpha = 0.5, cmap = 'viridis', edgecolor = 'k', linewidth = 0.1)
+    ctx.add_basemap(ax, source=ctx.providers.Stamen.TonerLite)
+    # ax.set_title('Number of customers per grid cell')
+    ax.axis('off')
+    plt.tight_layout()
+    return fig
+
+def plot_select_map(grid, cell_id):
+    grid['select'] = 'others'
+    grid.loc[grid['cellId']==cell_id, 'select'] = 'selected'
+
+    fig,  ax =  plt.subplots(1,1, figsize = (5,5))
+    grid.plot(ax=ax, color = 'r', alpha = 0.2) 
+    grid.plot(ax=ax, column = 'select', legend=False, alpha = 0.5, cmap = 'viridis', edgecolor = 'k', linewidth = 0.1)
+    ctx.add_basemap(ax, source=ctx.providers.Stamen.TonerLite)
+
+    # ax.set_title(f'Cell {cell_id}')
+    ax.axis('off')
+    plt.tight_layout()
+    return fig
+
+# def get_cell_info(cell_id):
+
+
+def plot_correlation(cell_id, energy, telecom, twitter, cell2line):
+    
+    line_id   = cell2line[cell_id]
+    internet  = telecom.query('CellID==@cell_id').drop('CellID', axis = 1)['internet'].resample('1H').mean()
+    smsin     = telecom.query('CellID==@cell_id').drop('CellID', axis = 1)['smsin'].resample('1H').mean()
+    smsout    = telecom.query('CellID==@cell_id').drop('CellID', axis = 1)['smsout'].resample('1H').mean()
+    callout   = telecom.query('CellID==@cell_id').drop('CellID', axis = 1)['callout'].resample('1H').mean()
+    callin    = telecom.query('CellID==@cell_id').drop('CellID', axis = 1)['callin'].resample('1H').mean()
+
+    fig = go.Figure()
+    fig.update_layout(
+            autosize=False,
+            width=1000,
+            height=500)
+
+    # # create a plotly figure object
+    # # add traces for each line plot
+    fig.add_trace(go.Scatter(x=energy.index, y=energy[line_id]*3, name='Energy'))
+    fig.add_trace(go.Scatter(x=twitter.index, y=twitter['tweets_total'], name='Twitter - Total Tweets'))
+    fig.add_trace(go.Scatter(x=callout.index, y=callout, name='Telecom - Call-out'))
+    fig.add_trace(go.Scatter(x=callin.index, y=callin, name='Telecom - Call-in'))
+    fig.add_trace(go.Scatter(x=smsin.index, y=smsin, name='Telecom - SMS-in'))
+    fig.add_trace(go.Scatter(x=smsout.index, y=smsout, name='Telecom - SMS-out'))
+
+    #fig.add_trace(pl.Scatter(x=internet.index, y=internet, name='INternet'))
+
+    # update layout with axis limits
+    fig.update_layout(xaxis_range=[energy.index.min(), energy.index.max()])
+
+    return fig
+
+# @st.cache_data
+# def read_trentino(nmin=100, nmax=400, cellsmax=2, ids_residential=[2738, 5201]):
+#     telecom, energy, lines, twitter = read_trentino_orig()
+
+#     lines_sum = lines.reset_index(inplace=False).groupby("LINESET")\
+#         .agg({"SQUAREID": "count", "NR_UBICAZIONI": "sum"})\
+#             .rename(columns={"SQUAREID": "n_cells", "NR_UBICAZIONI": "n_customers"})\
+#             .sort_values(by=["n_cells", "n_customers"])
+    
+#     cells_sum = lines.reset_index(inplace=False).groupby("SQUAREID")\
+#     .agg({"LINESET": "count", "NR_UBICAZIONI": "sum"})\
+#             .rename(columns={"LINESET": "n_lines", "NR_UBICAZIONI": "n_customers"})\
+#             .sort_values(by=["n_lines", "n_customers"])
+
+#     # filter
+#     query = "n_customers >= @nmin and n_customers <= @nmax and n_cells <= @cellsmax"
+#     lines_select = lines_sum.query(query)
+
+#     # find all cells served by these eligible lines
+#     cell_lines = pd.merge(lines_select, lines, left_index=True, right_on="LINESET")
+
+#     # # these eligible cells are served by not only those eligible lines
+#     # cells_select = pd.merge(cell_lines.drop(columns=["LINESET", "NR_UBICAZIONI", "n_customers", "n_cells"]), cells_sum, left_index=True, right_index=True, how="left")
+
+#     energy_ = energy.transpose().reset_index()
+#     energy_.rename(columns={"index": "LINE"}, inplace=True)
+
+#     # energy for each square - lineset combination
+#     line_energy = pd.merge(lines.reset_index(), energy_, left_on="LINESET", right_on="LINE")
+
+#     # each LINESET serves one or more CELLs
+#     line_cell = lines.reset_index(inplace=False, drop=False).groupby("LINESET").agg({"SQUAREID": "count", "NR_UBICAZIONI": "sum"})
+#     line_cell.rename(columns = {"SQUAREID": "n_cells", "NR_UBICAZIONI": "n_clients"}, inplace=True)
+
+#     # each CELL has one or more LINESET passing
+#     cell_line = lines.reset_index(inplace=False, drop=False).groupby("SQUAREID").agg({"LINESET": "count", "NR_UBICAZIONI": "sum"})
+#     cell_line.rename(columns = {"LINESET": "n_lines", "NR_UBICAZIONI": "n_clients"}, inplace=True)
+#     cell_line.sort_values(by=["n_clients", "n_lines"], inplace=True)
+
+    
+#     ids_residential.sort()
+#     lines_residential = list(cell_lines.query("index in @ids_residential")['LINESET'].sort_index())
+
+#     # update line_energy by removing energy negative records
+#     cols_ts = list(set(line_energy.columns) - set(['SQUAREID', 'LINESET', 'NR_UBICAZIONI', 'LINE'])) # timestamp columns
+
+#     line_energy = line_energy.loc[(line_energy[cols_ts]>=0).all(axis=1), :]
+
+#     # energy_select = line_energy.query("SQUAREID in @ids_residential and LINESET in @lines_residential")
+
+
+
+#     output_dict = {
+#         'original_dataset': {
+#             'telecom': telecom,
+#         },
+#         'processed': {
+#             'line_energy': line_energy,
+#             'cols_ts': cols_ts,
+#             'lines': lines_residential,
+#             'cell_lines': cell_lines
+#         }
+        
+#         }
+#     return output_dict
 
 
                    
