@@ -239,170 +239,197 @@ def predict_london(input_dict, timestamp = '2013-03-07', horizon = 24*7):
 
 @st.cache_data
 def read_hamelin():
-    # read data
     energy, weather, metadata, twitter, trends = read_hamelin_orig()
-
-    # data cleaning
-    power_substation = energy[['P_substation']].fillna(method='ffill')
-
-    power_substation_spe = get_spectrogram(power_substation, 'P_substation', 24*7, 24, plot = False)
-    power_substation_spe = power_substation_spe/np.max(power_substation_spe, axis = 0)
-
-    target_orig = TimeSeries.from_dataframe(power_substation, freq = 'H')
-
-    hodidays_covariates = target_orig.add_holidays("DE", state = "NI")['holidays']
-
-    frequency_covariates = TimeSeries.from_dataframe(power_substation_spe[['24.00', '12.00', '6.00']], freq = 'H')
+   
+    HOME_mean =  energy.loc[:, energy.columns.str.contains('HOME')].mean(axis=1).resample('1D').mean()
+    TOT_mean =  energy.loc[:, energy.columns.str.contains('TOT')].mean(axis=1).resample('1D').mean()
+    HEAT_mean =  energy.loc[:, energy.columns.str.contains('HEAT')].mean(axis=1).resample('1D').mean()
+    substation =  energy.loc[:, energy.columns.str.contains('substation')].resample('1D').mean()
 
 
-    temperature_history = weather['WEATHER_T']/np.max(weather['WEATHER_T'])
-    #perturb temperature to avoid perfect correlation
-    rolling_std = temperature_history.rolling(24*3).std()
-    temperature_forecast = temperature_history + np.random.normal(0, rolling_std, size = len(temperature_history))
+    HOME_mean = HOME_mean.rename('HOME').to_frame()
+    TOT_mean = TOT_mean.rename('TOT').to_frame()
+    HEAT_mean = HEAT_mean.rename('HEAT').to_frame()
+    substation = substation
+    
+    excel = trends[['Microsoft Excel']]
 
-    #temperature_covariate_past = TimeSeries.from_dataframe(temperature_forecast.to_frame(), freq = 'H')
-    #temperature_covariate_future  = TimeSeries.from_dataframe(temperature_forecast.to_frame(), freq = 'H')
-    temperature_covariate  = TimeSeries.from_dataframe(temperature_forecast.to_frame(), freq = 'H') #we can use it as past and future, although it is not perfect for past predictions
-
-
-    #datetime encodings (normalized)
-    datetime_covatiates = concatenate(
-        [
-            dt_attr(time_index = target_orig.time_index, attribute =  "hour", one_hot = False, cyclic = False )/24,
-            dt_attr(time_index = target_orig.time_index, attribute =  "day_of_week", one_hot = False, cyclic = False )/7,
-            dt_attr(time_index = target_orig.time_index, attribute =  "month", one_hot = False, cyclic = False )/12,
-            dt_attr(time_index = target_orig.time_index, attribute =  "day_of_year", one_hot = False, cyclic = False )/365,
-        ],
-        axis="component",
-    )
-
-    output_dict = {'original_dataset': energy,
-                    'darts_dict': 
-                    {
-                        'target_orig': target_orig,
-                        'hodidays_covariates': hodidays_covariates,
-                        'temperature_covariate': temperature_covariate,
-                        'frequency_covariates': frequency_covariates,
-                        'datetime_covatiates': datetime_covatiates
-                    }
-                    }
-
+    output_dict = {
+        'Home': HOME_mean,
+        'Heat': HEAT_mean,
+        'Total': TOT_mean,
+        'Substation': substation,
+        'Excel': excel,
+        }
 
     return output_dict
 
+#@st.cache_data
+# def read_hamelin():
+#     # read data
+#     energy, weather, metadata, twitter, trends = read_hamelin_orig()
 
-def predict_hamelin(input_dict, timestamp='2019-09-01', horizon=24*7):
-    #copy input_dict to avoid changing it
-    input_dict = input_dict.copy()
+#     # data cleaning
+#     power_substation = energy[['P_substation']].fillna(method='ffill')
 
+#     power_substation_spe = get_spectrogram(power_substation, 'P_substation', 24*7, 24, plot = False)
+#     power_substation_spe = power_substation_spe/np.max(power_substation_spe, axis = 0)
 
-    target_orig = input_dict['darts_dict']['target_orig']
-    hodidays_covariates = input_dict['darts_dict']['hodidays_covariates']
-    temperature_covariate = input_dict['darts_dict']['temperature_covariate']
-    frequency_covariates = input_dict['darts_dict']['frequency_covariates']
-    datetime_covatiates = input_dict['darts_dict']['datetime_covatiates']
+#     target_orig = TimeSeries.from_dataframe(power_substation, freq = 'H')
 
-    train, test = target_orig.split_before(pd.Timestamp(timestamp))
-    test = test.head(horizon*2)
+#     hodidays_covariates = target_orig.add_holidays("DE", state = "NI")['holidays']
 
-    scaler = Scaler(scaler=MaxAbsScaler())
-    train  = scaler.fit_transform(train)
-    test   = scaler.transform(test)
-    target = scaler.transform(target_orig)
+#     frequency_covariates = TimeSeries.from_dataframe(power_substation_spe[['24.00', '12.00', '6.00']], freq = 'H')
 
 
+#     temperature_history = weather['WEATHER_T']/np.max(weather['WEATHER_T'])
+#     #perturb temperature to avoid perfect correlation
+#     rolling_std = temperature_history.rolling(24*3).std()
+#     temperature_forecast = temperature_history + np.random.normal(0, rolling_std, size = len(temperature_history))
 
-    lags_horizon = list(np.hstack([np.arange(1, 25), [168]]))
-    lags_horizon = [int(x) for x in lags_horizon]
-    lags_horizon_past = [-int(x) for x in lags_horizon]
-    lags_horizon_past.sort()
-    lags_horizon_future = lags_horizon + lags_horizon_past
-
-
-
-    model_naive = LinearRegressionModel(lags_past_covariates=[-168])
-    model_naive.fit(train, past_covariates = target)
-    model_naive.model.coef_ = np.array([[1.0]])
-    model_naive.model.intercept_=0.0
+#     #temperature_covariate_past = TimeSeries.from_dataframe(temperature_forecast.to_frame(), freq = 'H')
+#     #temperature_covariate_future  = TimeSeries.from_dataframe(temperature_forecast.to_frame(), freq = 'H')
+#     temperature_covariate  = TimeSeries.from_dataframe(temperature_forecast.to_frame(), freq = 'H') #we can use it as past and future, although it is not perfect for past predictions
 
 
+#     #datetime encodings (normalized)
+#     datetime_covatiates = concatenate(
+#         [
+#             dt_attr(time_index = target_orig.time_index, attribute =  "hour", one_hot = False, cyclic = False )/24,
+#             dt_attr(time_index = target_orig.time_index, attribute =  "day_of_week", one_hot = False, cyclic = False )/7,
+#             dt_attr(time_index = target_orig.time_index, attribute =  "month", one_hot = False, cyclic = False )/12,
+#             dt_attr(time_index = target_orig.time_index, attribute =  "day_of_year", one_hot = False, cyclic = False )/365,
+#         ],
+#         axis="component",
+#     )
+
+#     output_dict = {'original_dataset': energy,
+#                     'darts_dict': 
+#                     {
+#                         'target_orig': target_orig,
+#                         'hodidays_covariates': hodidays_covariates,
+#                         'temperature_covariate': temperature_covariate,
+#                         'frequency_covariates': frequency_covariates,
+#                         'datetime_covatiates': datetime_covatiates
+#                     }
+#                     }
 
 
-    cov_args = {"future_covariates": [datetime_covatiates, hodidays_covariates, temperature_covariate],
-            "past_covariates": [frequency_covariates],}
+#     return output_dict
 
-    lgbm_args = {'verbose':0, "force_col_wise":True}
-    model = LightGBMModel(lags_future_covariates = lags_horizon_future , lags_past_covariates=lags_horizon_past, **lgbm_args  )                                
-    model.fit(train, **cov_args)
+
+# def predict_hamelin(input_dict, timestamp='2019-09-01', horizon=24*7):
+#     #copy input_dict to avoid changing it
+#     input_dict = input_dict.copy()
+
+
+#     target_orig = input_dict['darts_dict']['target_orig']
+#     hodidays_covariates = input_dict['darts_dict']['hodidays_covariates']
+#     temperature_covariate = input_dict['darts_dict']['temperature_covariate']
+#     frequency_covariates = input_dict['darts_dict']['frequency_covariates']
+#     datetime_covatiates = input_dict['darts_dict']['datetime_covatiates']
+
+#     train, test = target_orig.split_before(pd.Timestamp(timestamp))
+#     test = test.head(horizon*2)
+
+#     scaler = Scaler(scaler=MaxAbsScaler())
+#     train  = scaler.fit_transform(train)
+#     test   = scaler.transform(test)
+#     target = scaler.transform(target_orig)
+
+
+
+#     lags_horizon = list(np.hstack([np.arange(1, 25), [168]]))
+#     lags_horizon = [int(x) for x in lags_horizon]
+#     lags_horizon_past = [-int(x) for x in lags_horizon]
+#     lags_horizon_past.sort()
+#     lags_horizon_future = lags_horizon + lags_horizon_past
+
+
+
+#     model_naive = LinearRegressionModel(lags_past_covariates=[-168])
+#     model_naive.fit(train, past_covariates = target)
+#     model_naive.model.coef_ = np.array([[1.0]])
+#     model_naive.model.intercept_=0.0
+
+
+
+
+#     cov_args = {"future_covariates": [datetime_covatiates, hodidays_covariates, temperature_covariate],
+#             "past_covariates": [frequency_covariates],}
+
+#     lgbm_args = {'verbose':0, "force_col_wise":True}
+#     model = LightGBMModel(lags_future_covariates = lags_horizon_future , lags_past_covariates=lags_horizon_past, **lgbm_args  )                                
+#     model.fit(train, **cov_args)
 
     
     
-    model_no_human = LightGBMModel(lags_future_covariates = lags_horizon_future , lags_past_covariates=None, **lgbm_args) 
+#     model_no_human = LightGBMModel(lags_future_covariates = lags_horizon_future , lags_past_covariates=None, **lgbm_args) 
 
-    model_no_human.fit(train, future_covariates = [datetime_covatiates, temperature_covariate])
+#     model_no_human.fit(train, future_covariates = [datetime_covatiates, temperature_covariate])
 
-    output_dict = {'Naive': {'model': model_naive},
-            'EAI': {'model': model},
-            'EAI (no human behaviour)': {'model': model_no_human},
-            }
-
-
-
-
-    for model_name, model_params in output_dict.items():
-            model = model_params['model']
-            pred_test = model.predict(horizon, train)
-            pred_train = model.predict(horizon, train.head(-horizon), )
-
-            output_dict[model_name]['pred_test'] = pred_test
-            output_dict[model_name]['pred_train'] = pred_train
-
-
-    pred_test_ensemble = (output_dict['Naive']['pred_test']+output_dict['EAI']['pred_test'])/2
-
-    pred_train_ensemble = (output_dict['Naive']['pred_train']+output_dict['EAI']['pred_train'])/2
-
-    output_dict['Ensemble'] = {'pred_test': pred_test_ensemble, 'pred_train': pred_train_ensemble} 
-
-    output_dict['train'] = train.tail(horizon*2)
-    output_dict['test'] = test
-
-
-    #list of dict 
-    list_metrics_dict = []
-
-    for model_name in ['Naive', 'EAI (no human behaviour)', 'EAI',  'Ensemble']:
-        for metrics in [mape, smape]:
-            metrics_name = metrics.__name__
-            pred_train = output_dict[model_name]['pred_train']
-            pred_test = output_dict[model_name]['pred_test']
-
-            metrics_train =metrics(pred_train, output_dict['train'].tail(horizon))
-            metrics_test = metrics(pred_test, output_dict['test'].head(horizon))
-
-            list_metrics_dict.append({'model': model_name, 'metrics': metrics_name, 'train': metrics_train, 'test': metrics_test})
+#     output_dict = {'Naive': {'model': model_naive},
+#             'EAI': {'model': model},
+#             'EAI (no human behaviour)': {'model': model_no_human},
+#             }
 
 
 
-    df_metrics = pd.DataFrame(list_metrics_dict).set_index(['metrics', 'model'])
 
-    #two decimal points format but not using round to avoid rounding errors
-    df_metrics = df_metrics.applymap(lambda x: f'{x:.2f}')
+#     for model_name, model_params in output_dict.items():
+#             model = model_params['model']
+#             pred_test = model.predict(horizon, train)
+#             pred_train = model.predict(horizon, train.head(-horizon), )
 
-    if horizon == 24*7:
-        # make test be 'Week ahead' and train be 'Week before'
-        df_metrics = df_metrics.rename(columns={'train': 'Last week', 'test': 'Week ahead'})
-    elif horizon == 24:
-        # make test be 'Day ahead' and train be 'Day before'
-        df_metrics = df_metrics.rename(columns={'train': 'Last day', 'test': 'Day ahead'})
-    else:
-        pass
+#             output_dict[model_name]['pred_test'] = pred_test
+#             output_dict[model_name]['pred_train'] = pred_train
+
+
+#     pred_test_ensemble = (output_dict['Naive']['pred_test']+output_dict['EAI']['pred_test'])/2
+
+#     pred_train_ensemble = (output_dict['Naive']['pred_train']+output_dict['EAI']['pred_train'])/2
+
+#     output_dict['Ensemble'] = {'pred_test': pred_test_ensemble, 'pred_train': pred_train_ensemble} 
+
+#     output_dict['train'] = train.tail(horizon*2)
+#     output_dict['test'] = test
+
+
+#     #list of dict 
+#     list_metrics_dict = []
+
+#     for model_name in ['Naive', 'EAI (no human behaviour)', 'EAI',  'Ensemble']:
+#         for metrics in [mape, smape]:
+#             metrics_name = metrics.__name__
+#             pred_train = output_dict[model_name]['pred_train']
+#             pred_test = output_dict[model_name]['pred_test']
+
+#             metrics_train =metrics(pred_train, output_dict['train'].tail(horizon))
+#             metrics_test = metrics(pred_test, output_dict['test'].head(horizon))
+
+#             list_metrics_dict.append({'model': model_name, 'metrics': metrics_name, 'train': metrics_train, 'test': metrics_test})
+
+
+
+#     df_metrics = pd.DataFrame(list_metrics_dict).set_index(['metrics', 'model'])
+
+#     #two decimal points format but not using round to avoid rounding errors
+#     df_metrics = df_metrics.applymap(lambda x: f'{x:.2f}')
+
+#     if horizon == 24*7:
+#         # make test be 'Week ahead' and train be 'Week before'
+#         df_metrics = df_metrics.rename(columns={'train': 'Last week', 'test': 'Week ahead'})
+#     elif horizon == 24:
+#         # make test be 'Day ahead' and train be 'Day before'
+#         df_metrics = df_metrics.rename(columns={'train': 'Last day', 'test': 'Day ahead'})
+#     else:
+#         pass
     
-    df_metrics = df_metrics.sort_index(level=0)
+#     df_metrics = df_metrics.sort_index(level=0)
 
-    output_dict['metrics'] = df_metrics
+#     output_dict['metrics'] = df_metrics
 
-    return output_dict
+#     return output_dict
 
 
 @st.cache_data

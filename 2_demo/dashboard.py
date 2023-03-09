@@ -20,17 +20,18 @@ import plotly
 import plotly.express as px
 import plotly.graph_objects as go
 
+#streamlit run dashboard.py
 
 #make streamlit wide mode
 st.set_page_config(layout="wide", page_title = "EnergAIser forecasting", page_icon="📈",)
 
 
 st.title("EnergAIser")
-st.markdown("Selected dataset")
+#st.markdown("Selected dataset")
 
 
 
-country = st.sidebar.selectbox(label = "Select a Country", index = 0,
+country = st.sidebar.selectbox(label = "Selected dataset", index = 0,
                                options = ['<select dataset>', 'London, UK', 'Hamelin, DE', 'Trentino, IT'])
 
 
@@ -60,8 +61,11 @@ if country=='London, UK':
     fig.add_trace(go.Scatter(x=df.index, y=df['power_avg'],
                         mode='lines',
                         name='Daily average'))
+    
+    fig.update_xaxes(title_text="Date")
+    fig.update_yaxes(title_text="Power consumption (scaled)")
+
     st.plotly_chart(fig)
-        
     
 
     st.markdown("Select a forecast starting date")
@@ -91,12 +95,12 @@ if country=='London, UK':
             width=1000,
             height=500)
 
-        fig.add_trace(go.Scatter(x=train_df.tail(24).index, y=train_df.tail(24)['power_avg'],
-                            mode='lines',
-                            name='train'))
+        #fig.add_trace(go.Scatter(x=train_df.tail(24).index, y=train_df.tail(24)['power_avg'],
+        #                    mode='lines',
+        #                    name='train'))
         fig.add_trace(go.Scatter(x=test_df.head(horizon).index, y=test_df.head(horizon)['power_avg'],
                             mode='lines',
-                            name='test'))   
+                            name='Real data'))   
 
         if show_full_metrics:
             list_of_models = ['Naive', 'EAI (no human behaviour)', 'EAI',  'Ensemble']
@@ -112,7 +116,7 @@ if country=='London, UK':
         fig.update_layout(
             title="Train and test data",
             xaxis_title="Date",
-            yaxis_title="Power consumption",
+            yaxis_title="Power consumption (scaled)",
             legend_title="Legend Title",
             font=dict(
                 family="Courier New, monospace",
@@ -158,7 +162,10 @@ if country=='London, UK':
 
             # Set y-axes titles
             fig.update_yaxes(title_text="Tweets per hour", secondary_y=False)
-            fig.update_yaxes(title_text="Hourly energy consumption", secondary_y=True)
+            fig.update_yaxes(title_text="Hourly energy consumption (scaled)", secondary_y=True)
+            #remove grid from the secondary y axis
+            fig.update_yaxes(showgrid=False, secondary_y=True)
+
 
             st.plotly_chart(fig)
 
@@ -166,15 +173,17 @@ if country=='London, UK':
 
 
 elif country=='Hamelin, DE':
-    horizon = st.sidebar.selectbox(label = "Select forecast horizon", index = 0,
-                                options = ['<select horizon>', 'Day ahead', 'Week ahead'])
-    horizon = {'Day ahead':24, 'Week ahead': 24*7, '<select horizon>': None}[horizon]
-
-    st.subheader('Hamelin, DE') 
-
+    st.subheader(f'Hamelin, DE, 70 household substation')
     hamelin_dict = read_hamelin()
 
-    df = hamelin_dict['original_dataset'].resample('1D').mean()
+    home_power = hamelin_dict['Home']
+    heating_power = hamelin_dict['Heat']
+    total_power = hamelin_dict['Total']
+    substation_power = hamelin_dict['Substation']
+    excel_trend = hamelin_dict['Excel']
+
+
+    df = substation_power.resample('1D').mean()
 
     fig = go.Figure()
     fig.update_layout(
@@ -182,75 +191,136 @@ elif country=='Hamelin, DE':
             width=1000,
             height=500)
 
-    fig.add_trace(go.Scatter(x=df.index, y=df['P_substation'],
+    fig.add_trace(go.Scatter(x=df.index, y=df['P_substation']/df['P_substation'].mean(),
                         mode='lines',
-                        name='Daily average'))
+                        name='Energy consumption (scaled)'))
+    fig.update_xaxes(title_text="Date")
+    fig.update_yaxes(title_text="Energy consumption (scaled)")
+
+
     st.plotly_chart(fig)
 
-    st.markdown("Select a forecast starting date")
-    start_date = st.date_input('Start date', value = df.index.mean().date(), min_value = df.index.min(), max_value = df.index.max())
-
-    #and update the plot with the selected date as a vertical line
-    fig.add_vline(x=start_date)
-
-    show_full_metrics = st.checkbox('Show full metrics', value = 0)
-    #ask whether to proceed with the forecast
-    if st.button('Forecast'):
-        st.write('Forecasting...')
-
-        predict_dict = predict_hamelin(hamelin_dict, start_date, horizon = horizon)
 
 
-        train_df = predict_dict['train'].pd_dataframe()
-        test_df = predict_dict['test'].pd_dataframe()
+    trends = st.button('Plot Google Trends')
+    if trends:
+        st.write('Average household consumption (40 homes)')
 
-
-        fig = go.Figure()
+        fig = plotly.subplots.make_subplots(specs=[[{"secondary_y": True}]])
         fig.update_layout(
             autosize=False,
             width=1000,
             height=500)
 
-        fig.add_trace(go.Scatter(x=train_df.tail(24).index, y=train_df.tail(24)['P_substation'],
+        fig.add_trace(go.Scatter(x=home_power.index, y=home_power['HOME']/home_power['HOME'].mean(),
                             mode='lines',
-                            name='train'))
-        fig.add_trace(go.Scatter(x=test_df.head(horizon).index, y=test_df.head(horizon)['P_substation'],
-                            mode='lines',
-                            name='test'))   
+                            name='Household consumption (no heating)'),
+                            secondary_y=False)
 
-        for model_name in ['Naive', 'EAI (no human behaviour)', 'EAI',  'Ensemble']:
-            model_df = predict_dict[model_name]['pred_test'].pd_dataframe()
-            fig.add_trace(go.Scatter(x=model_df.index, y=model_df['P_substation'],
-                            mode='lines',
-                            name=model_name))
-            
-        
-        
-        fig.update_layout(
-            title="Train and test data",
-            xaxis_title="Date",
-            yaxis_title="Power consumption",
-            legend_title="Legend Title",
-            font=dict(
-                family="Courier New, monospace",
-                size=18,
-                color="RebeccaPurple"
-            )
-        )
+        #fig.add_trace(go.Scatter(x=heating_power.index, y=heating_power['HEAT']/#heating_power['HEAT'].mean(),
+        #                    mode='lines',
+        #                    name='Heating only consumption'),
+        #                    secondary_y=False)
 
+        fig.add_trace(go.Scatter(x=excel_trend.index, y=excel_trend['Microsoft Excel']+excel_trend['Microsoft Excel'].min(),
+                        mode='lines',
+                        name = 'Microsoft Excel populatiry'), secondary_y=True)   
+
+        fig.update_xaxes(title_text="Date")
+        fig.update_yaxes(title_text="Energy consumption (scaled)", secondary_y=False)
+        fig.update_yaxes(title_text="Populatiry", secondary_y=True)
+        fig.update_yaxes(showgrid=False, secondary_y=True)
 
         st.plotly_chart(fig)
 
-        metrics = predict_dict['metrics']
-        st.write('MAPE error metrics:')
-        st.write(metrics.query('model in ["Naive", "EAI"]').loc['mape', :][['Week ahead']])
 
 
-        if show_full_metrics:
-            st.write('MAPE error metrics:')
-            st.write(metrics.loc['mape', :][['Week ahead', 'Last week']])
-            st.write('SMAPE error metrics:')
-            st.write(metrics.loc['smape', :][['Week ahead', 'Last week']])
+# elif country=='Hamelin, DE':
+#     horizon = st.sidebar.selectbox(label = "Select forecast horizon", index = 0,
+#                                 options = ['<select horizon>', 'Day ahead', 'Week ahead'])
+#     horizon = {'Day ahead':24, 'Week ahead': 24*7, '<select horizon>': None}[horizon]
+
+#     st.subheader('Hamelin, DE') 
+
+#     hamelin_dict = read_hamelin()
+
+#     df = hamelin_dict['original_dataset'].resample('1D').mean()
+
+#     fig = go.Figure()
+#     fig.update_layout(
+#             autosize=False,
+#             width=1000,
+#             height=500)
+
+#     fig.add_trace(go.Scatter(x=df.index, y=df['P_substation'],
+#                         mode='lines',
+#                         name='Daily average'))
+#     st.plotly_chart(fig)
+
+#     st.markdown("Select a forecast starting date")
+#     start_date = st.date_input('Start date', value = df.index.mean().date(), min_value = df.index.min(), max_value = df.index.max())
+
+#     #and update the plot with the selected date as a vertical line
+#     fig.add_vline(x=start_date)
+
+#     show_full_metrics = st.checkbox('Show full metrics', value = 0)
+#     #ask whether to proceed with the forecast
+#     if st.button('Forecast'):
+#         st.write('Forecasting...')
+
+#         predict_dict = predict_hamelin(hamelin_dict, start_date, horizon = horizon)
+
+
+#         train_df = predict_dict['train'].pd_dataframe()
+#         test_df = predict_dict['test'].pd_dataframe()
+
+
+#         fig = go.Figure()
+#         fig.update_layout(
+#             autosize=False,
+#             width=1000,
+#             height=500)
+
+#         fig.add_trace(go.Scatter(x=train_df.tail(24).index, y=train_df.tail(24)['P_substation'],
+#                             mode='lines',
+#                             name='train'))
+#         fig.add_trace(go.Scatter(x=test_df.head(horizon).index, y=test_df.head(horizon)['P_substation'],
+#                             mode='lines',
+#                             name='test'))   
+
+#         for model_name in ['Naive', 'EAI (no human behaviour)', 'EAI',  'Ensemble']:
+#             model_df = predict_dict[model_name]['pred_test'].pd_dataframe()
+#             fig.add_trace(go.Scatter(x=model_df.index, y=model_df['P_substation'],
+#                             mode='lines',
+#                             name=model_name))
+            
+        
+        
+#         fig.update_layout(
+#             title="Train and test data",
+#             xaxis_title="Date",
+#             yaxis_title="Power consumption",
+#             legend_title="Legend Title",
+#             font=dict(
+#                 family="Courier New, monospace",
+#                 size=18,
+#                 color="RebeccaPurple"
+#             )
+#         )
+
+
+#         st.plotly_chart(fig)
+
+#         metrics = predict_dict['metrics']
+#         st.write('MAPE error metrics:')
+#         st.write(metrics.query('model in ["Naive", "EAI"]').loc['mape', :][['Week ahead']])
+
+
+#         if show_full_metrics:
+#             st.write('MAPE error metrics:')
+#             st.write(metrics.loc['mape', :][['Week ahead', 'Last week']])
+#             st.write('SMAPE error metrics:')
+#             st.write(metrics.loc['smape', :][['Week ahead', 'Last week']])
    
 
 
