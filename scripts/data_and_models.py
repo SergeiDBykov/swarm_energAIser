@@ -38,6 +38,7 @@ import seaborn as sns
 import xarray as xr
 import contextily as ctx
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 data_path = os.path.join(ROOT , '0_data/')
 
 
@@ -540,20 +541,25 @@ def plot_correlation(cell_id, energy, telecom, twitter, cell2line):
     callout   = telecom.query('CellID==@cell_id').drop('CellID', axis = 1)['callout'].resample('1H').mean()
     callin    = telecom.query('CellID==@cell_id').drop('CellID', axis = 1)['callin'].resample('1H').mean()
 
-    fig = go.Figure()
+    fig = make_subplots(specs=[[{"secondary_y": True}]])
     fig.update_layout(
             autosize=False,
-            width=1000,
-            height=500)
+            width=1200,
+            height=600,
+            xaxis=dict(title="Date"),
+            yaxis=dict(title='Power consumption (scaled)'),
+            yaxis2=dict(title='Proxy data',
+                    overlaying='y',
+                    side='right'))
 
     # # create a plotly figure object
     # # add traces for each line plot
-    fig.add_trace(go.Scatter(x=energy.index, y=energy[line_id]*3, name='Energy'))
-    fig.add_trace(go.Scatter(x=twitter.index, y=twitter['tweets_total'], name='Twitter - Total Tweets'))
-    fig.add_trace(go.Scatter(x=callout.index, y=callout, name='Telecom - Call-out'))
-    fig.add_trace(go.Scatter(x=callin.index, y=callin, name='Telecom - Call-in'))
-    fig.add_trace(go.Scatter(x=smsin.index, y=smsin, name='Telecom - SMS-in'))
-    fig.add_trace(go.Scatter(x=smsout.index, y=smsout, name='Telecom - SMS-out'))
+    fig.add_trace(go.Scatter(x=energy.index, y=energy[line_id]*3, name='Energy'), secondary_y=False)
+    fig.add_trace(go.Scatter(x=twitter.index, y=twitter['tweets_total'], name='Twitter - Total Tweets'), secondary_y=True)
+    fig.add_trace(go.Scatter(x=callout.index, y=callout, name='Telecom - Call'), secondary_y=False)
+    # fig.add_trace(go.Scatter(x=callin.index, y=callin, name='Telecom - Call-in'))
+    # fig.add_trace(go.Scatter(x=smsin.index, y=smsin, name='Telecom - SMS-in'))
+    fig.add_trace(go.Scatter(x=smsout.index, y=smsout, name='Telecom - SMS'), secondary_y=False)
 
     #fig.add_trace(pl.Scatter(x=internet.index, y=internet, name='INternet'))
 

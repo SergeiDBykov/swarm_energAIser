@@ -19,7 +19,7 @@ import streamlit as st
 import plotly
 import plotly.express as px
 import plotly.graph_objects as go
-import cufflinks
+import cufflinks as cf
 
 #streamlit run dashboard.py
 
@@ -329,7 +329,7 @@ elif country=='Hamelin, DE':
 elif country=='Trentino, IT':
     cell2line = {2738: 'DG1013007', 5201: 'DG1011926'}
     cellid_ = st.sidebar.selectbox(label = "Select cell ID", index = 0,
-                            options = ['2738', '5201'])
+                            options = ['5201'])
     st.subheader('Trentino, IT') 
     trentino_dict = read_trentino()
     telecom, energy, lines, twitter, grid = trentino_dict['telecom'], \
@@ -347,10 +347,10 @@ elif country=='Trentino, IT':
         st.write("#### Selected cell # ", cellid_)
         fig = plot_select_map(grid, cellid)
         st.pyplot(fig)
-    df_info = lines.query("index==@cellid")
-    df_info.index.name = "CellID"
-    df_info.rename(columns={"LINESET": "LineID", "NR_UBICAZIONI": "N_customers"})
-    st.dataframe(df_info)
+    # df_info = lines.query("index==@cellid")
+    # df_info.index.name = "CellID"
+    # df_info.rename(columns={"LINESET": "LineID", "NR_UBICAZIONI": "N_customers"})
+    # st.dataframe(df_info)
     st.write("Showing cell: ", cellid_, "line: ", cell2line[cellid])
 
     fig = plot_correlation(cellid, energy, telecom, twitter, cell2line)
@@ -368,9 +368,57 @@ elif country=='Campuses in UK, UK':
     df_corr = campus_cases.corr().loc[cellid_].sort_values(ascending=False)
     fig_campus_cases = campus_cases.loc[:,df_corr.head(3).index]
     fig_campus_cases = (fig_campus_cases-fig_campus_cases.mean())/fig_campus_cases.std()
-    fig_campus_cases = fig_campus_cases.iplot(asFigure=True, title='Campus energy and correlated proxy data (Google Trends data)')
-    st.plotly_chart(fig_campus_cases)
-    
+
+    fig = make_subplots(specs=[[{"secondary_y": True}]])
+    fig.update_layout(
+            autosize=False,
+            width=1200,
+            height=600,
+            title="Campus energy and correlated proxy data (Google Trends data)",
+            xaxis=dict(title="Date"),
+            yaxis=dict(title='Power consumption (scaled)'),
+            yaxis2=dict(title='Google trend',
+                    overlaying='y',
+                    side='right'))
+
+    # fig = go.Figure()
+    fig = make_subplots(specs=[[{"secondary_y": True}]])
+    fig.update_layout(
+            autosize=False,
+            width=1200,
+            height=600,
+            title='Campus energy and correlated proxy data (Google Trends data)',
+            yaxis={'title': 'Power consumption (scaled)'},
+            xaxis={'title': 'Date'},
+            )
+    for col in fig_campus_cases.columns:
+        print(col)
+        if "university" in col.lower() or "univerity" in col.lower():
+            ncol = "power consumption"
+            fig.add_trace(go.Scatter(x=fig_campus_cases.index, y=fig_campus_cases[col], name=ncol), secondary_y=False)
+        else:
+            ncol = f"google trend for '{col}'"
+            fig.add_trace(go.Scatter(x=fig_campus_cases.index, y=fig_campus_cases[col], name=ncol), secondary_y=True)
+
+    # layout1 = cf.Layout(
+    #             height=500,
+    #             width=1000
+    #             )
+    # fig_campus_cases = fig_campus_cases.iplot(asFigure=True, 
+    #                                           title='Campus energy and correlated proxy data (Google Trends data)',
+    #                                           xTitle = 'Date', 
+    #                                           yTitle= 'Correlation', 
+    #                                           layout=layout1
+    #                                           )
+    # st.plotly_chart(fig_campus_cases)
+    # # create a plotly figure object
+    # # add traces for each line plot
+
+
+    # update layout with axis limits
+    fig.update_layout(xaxis_range=[fig_campus_cases.index.min(), fig_campus_cases.index.max()])
+    st.plotly_chart(fig)
+
     st.write('Correlations with topics in Google Trends:')
     st.write(df_corr)
     
@@ -386,8 +434,27 @@ elif country=='Campuses in US, US':
     df_corr = campus_cases.corr().loc[cellid_].sort_values(ascending=False)
     fig_campus_cases = campus_cases.loc[:,df_corr.head(3).index]
     fig_campus_cases = (fig_campus_cases-fig_campus_cases.mean())/fig_campus_cases.std()
-    fig_campus_cases = fig_campus_cases.iplot(asFigure=True, title='Campus energy and correlated proxy data (Google Trends data)')
-    st.plotly_chart(fig_campus_cases)   
+
+    fig = make_subplots(specs=[[{"secondary_y": True}]])
+    fig.update_layout(
+            autosize=False,
+            width=1200,
+            height=600,
+            title='Campus energy and correlated proxy data (Google Trends data)',
+            yaxis={'title': 'Power consumption (scaled)'},
+            xaxis={'title': 'Date'},
+            )
+    for col in fig_campus_cases.columns:
+        print(col.lower())
+        if "university" in col.lower() or "univerity" in col.lower():
+            ncol = "power consumption"
+            fig.add_trace(go.Scatter(x=fig_campus_cases.index, y=fig_campus_cases[col], name=ncol), secondary_y=False)
+        else:
+            ncol = f"google trend for '{col}'"
+            fig.add_trace(go.Scatter(x=fig_campus_cases.index, y=fig_campus_cases[col], name=ncol), secondary_y=True)
+
+    # fig_campus_cases = fig_campus_cases.iplot(asFigure=True, title='Campus energy and correlated proxy data (Google Trends data)')
+    st.plotly_chart(fig)   
     
     st.write('Correlations with topics in Google Trends:')
     st.write(df_corr)
