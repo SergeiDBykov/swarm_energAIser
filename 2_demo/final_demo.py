@@ -11,9 +11,7 @@ if platform.system() != 'Windows':
     ROOT = Path(os.path.relpath(ROOT, Path.cwd()))  # relative
 
 from scripts.utils import set_mpl
-from scripts.data_and_models import read_london, predict_london
-from darts.metrics import mape, smape
-#, read_hamelin, read_trentino
+# from scripts.data_and_models import read_london, predict_london, read_hamelin, read_trentino
 from scripts.data_and_models import *
 import streamlit as st
 #import streamlit.components.v1 as components
@@ -257,11 +255,64 @@ elif country=='Hamelin, DE':
 
 
 elif country=='Trentino, IT':
-    cellid = st.sidebar.selectbox(label = "Select cell ID", index = 0,
-                                options = ['4213', '2123'])
+    cellid_ = st.sidebar.selectbox(label = "Select cell ID", index = 0,
+                                options = ['2738', '5201', '5230'])
 
-
+    
     st.subheader('Trentino, IT') 
+    trentino_dict = read_trentino()
+    line_energy, cell_lines, cols_ts = trentino_dict['processed']['line_energy'], \
+        trentino_dict['processed']['cell_lines'], \
+        trentino_dict['processed']['cols_ts']
+    telecom = trentino_dict['original_dataset']['telecom']
+    cellid = int(cellid_)
+
+    lineid = cell_lines.query("index == @cellid")['LINESET'].values[0]
+
+    energy_select = line_energy.query("SQUAREID == @cellid and LINESET == @lineid")#.sort_values("LINESET")
+    energy_cell = energy_select[cols_ts].transpose()
+    energy_cell.columns = energy_select['SQUAREID']#.astype(str)#  + '-' +energy_select['LINESET'].astype(str) 
+    energy_cell.index = pd.to_datetime(energy_cell.index)
+    energy_cell.index.name = "date"
+    energy_cell.sort_index(inplace=True)
+    telecom_cell = telecom.query("CellID == @cellid").sort_index(inplace=False)
+    
+    merged = pd.merge(energy_cell, telecom_cell.reset_index().groupby("datetime").mean(), 
+                      left_index=True, right_index=True, how="right")
+    merged.rename(columns={cellid: "energy"}, inplace=True)
+
+    print(merged.columns, merged.shape)
+
+    fig = go.Figure()
+    fig.update_layout(
+            autosize=False,
+            width=1000,
+            height=500)
+    trace1 = go.Scatter(x=merged.index, y=merged['energy'], name="energy", mode='lines',
+                            yaxis='y1')
+    fig.add_trace(trace1)
+
+    for col in ['smsin', 'smsout', 'callin', 'callout', 'internet']:
+            trace = go.Scatter(x=merged.index, y=merged[col], name=col, mode='lines',
+                                    yaxis='y2')
+            fig.add_trace(trace)
+    # Add figure title
+    fig.update_layout(
+        title_text=f"Cell {cellid}",
+            yaxis=dict(title='Energy'),
+            yaxis2=dict(title='Activities',
+                    overlaying='y',
+                    side='right'))
+
+    # Set x-axis title
+    fig.update_xaxes(title_text="Timestamp")
+    st.plotly_chart(fig)
+
+    st.markdown("Select a date to inspect")
+    _date = st.date_input('Start date', value=merged.index.mean().date(), min_value=merged.index.min(), max_value = merged.index.max())
+    print(_date, type(_date))
+
+
    
 
 else:
