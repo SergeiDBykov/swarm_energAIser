@@ -10,7 +10,7 @@ if str(ROOT) not in sys.path:
 if platform.system() != 'Windows':
     ROOT = Path(os.path.relpath(ROOT, Path.cwd()))  # relative
 
-from scripts.utils import set_mpl
+from scripts.utils import set_mpl, read_campus
 # from scripts.data_and_models import read_london, predict_london, read_hamelin, read_trentino
 from scripts.data_and_models import *
 import streamlit as st
@@ -19,6 +19,7 @@ import streamlit as st
 import plotly
 import plotly.express as px
 import plotly.graph_objects as go
+import cufflinks
 
 #streamlit run dashboard.py
 
@@ -32,7 +33,8 @@ st.title("EnergAIser")
 
 
 country = st.sidebar.selectbox(label = "Selected dataset", index = 0,
-                               options = ['<select dataset>', 'London, UK', 'Hamelin, DE', 'Trentino, IT'])
+                               options = ['<select dataset>', 'London, UK', 'Hamelin, DE', 'Trentino, IT',
+                                          'Campuses in UK, UK', 'Campuses in US, US'])
 
 
 if country=='London, UK':
@@ -353,6 +355,42 @@ elif country=='Trentino, IT':
 
     fig = plot_correlation(cellid, energy, telecom, twitter, cell2line)
     st.plotly_chart(fig)
+
+elif country=='Campuses in UK, UK':
+    cellid_ = st.sidebar.selectbox(label = "Select campus", index = 0,
+                                options = ['University College London (UK)', 'Cardiff University (UK)'])
+
+    
+    st.subheader('Campuses in UK') 
+    campus_cases = read_campus().set_index('timestamp')
+    campus_cases = campus_cases.loc[:, ~campus_cases.columns.str.contains('Office')]
+    campus_cases = pd.concat([campus_cases[[cellid_]], campus_cases.loc[:, campus_cases.columns.str.contains('GB_')]], axis=1)
+    df_corr = campus_cases.corr().loc[cellid_].sort_values(ascending=False)
+    fig_campus_cases = campus_cases.loc[:,df_corr.head(3).index]
+    fig_campus_cases = (fig_campus_cases-fig_campus_cases.mean())/fig_campus_cases.std()
+    fig_campus_cases = fig_campus_cases.iplot(asFigure=True, title='Campus energy and correlated proxy data (Google Trends data)')
+    st.plotly_chart(fig_campus_cases)
+    
+    st.write('Correlations with topics in Google Trends:')
+    st.write(df_corr)
+    
+elif country=='Campuses in US, US':
+    cellid_ = st.sidebar.selectbox(label = "Select campus", index = 0,
+                                options = ['University of Virginia (US)', 'Univerity of Texas - Austin (US)'])
+
+    
+    st.subheader('Campuses in US') 
+    campus_cases = read_campus().set_index('timestamp')
+    campus_cases = campus_cases.loc[:, ~campus_cases.columns.str.contains('Office')]
+    campus_cases = pd.concat([campus_cases[[cellid_]], campus_cases.loc[:, campus_cases.columns.str.contains('US_')]], axis=1)
+    df_corr = campus_cases.corr().loc[cellid_].sort_values(ascending=False)
+    fig_campus_cases = campus_cases.loc[:,df_corr.head(3).index]
+    fig_campus_cases = (fig_campus_cases-fig_campus_cases.mean())/fig_campus_cases.std()
+    fig_campus_cases = fig_campus_cases.iplot(asFigure=True, title='Campus energy and correlated proxy data (Google Trends data)')
+    st.plotly_chart(fig_campus_cases)   
+    
+    st.write('Correlations with topics in Google Trends:')
+    st.write(df_corr)
 
     
     # st.subheader('Trentino, IT') 
