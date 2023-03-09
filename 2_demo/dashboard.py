@@ -325,77 +325,105 @@ elif country=='Hamelin, DE':
 
 
 elif country=='Trentino, IT':
+    cell2line = {2738: 'DG1013007', 5201: 'DG1011926'}
     cellid_ = st.sidebar.selectbox(label = "Select cell ID", index = 0,
-                                options = ['2738', '5201', '5230'])
-
-    
+                            options = ['2738', '5201'])
     st.subheader('Trentino, IT') 
     trentino_dict = read_trentino()
-    line_energy, cell_lines, cols_ts = trentino_dict['processed']['line_energy'], \
-        trentino_dict['processed']['cell_lines'], \
-        trentino_dict['processed']['cols_ts']
-    telecom = trentino_dict['original_dataset']['telecom']
-    cellid = int(cellid_)
-
-    lineid = cell_lines.query("index == @cellid")['LINESET'].values[0]
-
-    energy_select = line_energy.query("SQUAREID == @cellid and LINESET == @lineid")#.sort_values("LINESET")
-    energy_cell = energy_select[cols_ts].transpose()
-    energy_cell.columns = energy_select['SQUAREID']#.astype(str)#  + '-' +energy_select['LINESET'].astype(str) 
-    energy_cell.index = pd.to_datetime(energy_cell.index)
-    energy_cell.index.name = "date"
-    energy_cell.sort_index(inplace=True)
-    telecom_cell = telecom.query("CellID == @cellid").sort_index(inplace=False)
+    telecom, energy, lines, twitter, grid = trentino_dict['telecom'], \
+        trentino_dict['energy'], trentino_dict['lines'], trentino_dict['twitter'], \
+            trentino_dict['grid']
     
-    merged = pd.merge(energy_cell, telecom_cell.reset_index().groupby("datetime").mean(), 
-                      left_index=True, right_index=True, how="right")
-    merged.rename(columns={cellid: "energy"}, inplace=True)
+    col1, col2 = st.columns(2)
+    with col1:
+        fig = plot_map_orig(grid)
+        st.write("#### Number of customers per grid cell")
+        st.pyplot(fig)
 
-    print(merged.columns, merged.shape)
+    cellid = int(cellid_)
+    with col2:
+        st.write("#### Selected cell # ", cellid_)
+        fig = plot_select_map(grid, cellid)
+        st.pyplot(fig)
+    df_info = lines.query("index==@cellid")
+    df_info.index.name = "CellID"
+    df_info.rename(columns={"LINESET": "LineID", "NR_UBICAZIONI": "N_customers"})
+    st.dataframe(df_info)
+    st.write("Showing cell: ", cellid_, "line: ", cell2line[cellid])
 
-    fig = go.Figure()
-
-    trace1 = go.Scatter(x=merged.index, y=merged['energy'], name="energy", mode='lines',
-                            yaxis='y1')
-    fig.add_trace(trace1)
-
-    for col in ['smsin', 'smsout', 'callin', 'callout', 'internet']:
-            trace = go.Scatter(x=merged.index, y=merged[col], name=col, mode='lines',
-                                    yaxis='y2')
-            fig.add_trace(trace)
-
-    # Add figure title
-    fig.update_layout(
-        autosize=False,
-        width=1000,
-        height=500,
-        title=f"Cell {cellid}",
-        xaxis_title="Date",
-        yaxis=dict(title='Energy'),
-        yaxis2=dict(title='Activities',
-                overlaying='y',
-                side='right'),
-        # legend_title="Legend Title",
-        font=dict(
-            family="Courier New, monospace",
-            size=18,
-            color="RebeccaPurple"
-        ),
-        legend=dict(
-            # title="Legend Title",
-            x=1.1,
-            y=1,
-            traceorder='normal',
-            font=dict(
-                size=10),
-        ),
-        )
-
+    fig = plot_correlation(cellid, energy, telecom, twitter, cell2line)
     st.plotly_chart(fig)
 
-    st.markdown("Select a date to inspect")
-    _date = st.date_input('Start date', value=merged.index.mean().date(), min_value=merged.index.min(), max_value = merged.index.max())
-    print(_date, type(_date))
+    
+    # st.subheader('Trentino, IT') 
+    # trentino_dict = read_trentino()
+    # line_energy, cell_lines, cols_ts = trentino_dict['processed']['line_energy'], \
+    #     trentino_dict['processed']['cell_lines'], \
+    #     trentino_dict['processed']['cols_ts']
+    # telecom = trentino_dict['original_dataset']['telecom']
+    # cellid = int(cellid_)
+
+    # lineid = cell_lines.query("index == @cellid")['LINESET'].values[0]
+
+    # energy_select = line_energy.query("SQUAREID == @cellid and LINESET == @lineid")#.sort_values("LINESET")
+    # energy_cell = energy_select[cols_ts].transpose()
+    # energy_cell.columns = energy_select['SQUAREID']#.astype(str)#  + '-' +energy_select['LINESET'].astype(str) 
+    # energy_cell.index = pd.to_datetime(energy_cell.index)
+    # energy_cell.index.name = "date"
+    # telecom_cell = telecom.query("CellID == @cellid").sort_index(inplace=False)
+    # telecom_cell.index = pd.to_datetime(telecom_cell.index.strftime('%Y-%m-%d %H'))
+    # energy_cell.sort_index(inplace=True)
+    
+    # merged = pd.merge(energy_cell, telecom_cell.reset_index().groupby("datetime").mean(), 
+    #                   left_index=True, right_index=True, how="right")
+
+    # merged.rename(columns={cellid: "energy"}, inplace=True)
+    # print(merged.columns)
+    # fig = go.Figure()
+    # print("columns: ", merged.columns)
+    # print(merged['energy'])
+    # trace1 = go.Scatter(x=merged.index, y=merged['energy'], name="energy", mode='lines',
+    #                         secondary_y=False)
+
+    # fig.add_trace(trace1)
+
+    # for col in ['smsout','callout', 'internet']: #  'smsin', 'callin', 
+    #         trace = go.Scatter(x=merged.index, y=merged[col], name=col, mode='lines',
+    #                                 secondary_y=True)
+    #         fig.add_trace(trace)
+
+    # # Add figure title
+    # fig.update_layout(
+    #     autosize=False,
+    #     width=1000,
+    #     height=500,
+    #     title=f"Cell {cellid}",
+    #     xaxis_title="Date",
+    #     yaxis=dict(title='Energy'),
+    #     yaxis2=dict(title='Activities',
+    #             overlaying='y',
+    #             side='right'),
+    #     # legend_title="Legend Title",
+    #     font=dict(
+    #         family="Courier New, monospace",
+    #         size=18,
+    #         color="RebeccaPurple"
+    #     ),
+    #     legend=dict(
+    #         # title="Legend Title",
+    #         x=1.1,
+    #         y=1,
+    #         traceorder='normal',
+    #         font=dict(
+    #             size=10),
+    #     ),
+    #     )
+
+    # st.plotly_chart(fig)
+
+    # st.markdown("Select a date to inspect")
+    # _date = st.date_input('Start date', value=merged.index.mean().date(), min_value=merged.index.min(), max_value = merged.index.max())
+    # print(_date, type(_date))
 
 
    
