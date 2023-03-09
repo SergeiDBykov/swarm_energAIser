@@ -117,7 +117,27 @@ def set_mpl(palette = 'energaiser', desat = 0.8):
     print('matplotlib settings set')
 set_mpl()
 
+def read_campus():
+    print(f"""
+    Loading campus data from {data_path}.
 
+    reutrns:
+    campus_cases: pd.DataFrame with energy consumption data and google trends data
+
+    """)
+
+    campus_path = data_path
+
+    campus_file = 'campus_cases.csv'
+
+    try:
+        campus_cases = pd.read_csv(campus_path+campus_file, index_col=0)
+    except:
+        print('(Windows load)')
+        campus_cases = pd.read_csv((campus_path+campus_file).replace('/', '\\'), index_col=0)
+
+
+    return campus_cases
 
 def read_hamelin():
     print(f"""
@@ -126,18 +146,15 @@ def read_hamelin():
     Houses with PV: ['13', '15', '26', '33'] 
     HOUSEHOLD and HEATPUMP energy consumption are separated. 
     Resolution: 60min 
-
     May-June 2019 data for home #34 excluded 
     Data before 2018-05-18 excluded (gaps)
     Data with zero difference between consecutive values dropped (malfunction)
-
     reutrns:
     df_energy: pd.DataFrame with energy consumption data
     df_weather: pd.DataFrame with weather data
     df_metadata: pd.DataFrame with metadata
     df_twitter: pd.DataFrame with twitter data
     df_trends: pd.DataFrame with trends data
-
     """)
 
     hamelin_path = data_path+'Hamelin_drive/'
@@ -175,10 +192,8 @@ def read_london():
     print(f"""
     Loading London data from {data_path}.
     Weather from `meteostat` package.
-
     STD and ToU tariffs are separated.
     Data resampled (mean) to 1H resolution from original 30min resolution.
-
     reutrns:
     df_std: pd.DataFrame with STD tariff data
     df_tou: pd.DataFrame with ToU tariff data
@@ -218,21 +233,17 @@ def read_london():
 def read_trentino():
     print(f"""
     Loading Trentino data from {data_path}.
-
     Data (energy and telecommunication) are spatially-resolved in grid cells. 
     For the location of grid cells see geojson file in the same folder (trentino-grid.geojson), e.g. plot it on the website https://geojson.io/.
-
     
     Telecommunication Data (sms, calls, internet)  is not resampled, energy consumption data is resampled to 1H resolution.
     Telecommunication data are only for grid cells with energy consumption data.
     Telecommunication data is for country-code 39 (Italy) only.
-
     reutrns:
     df_telecom: pd.DataFrame with telecom data (sms, calls, internet)  with arbitrary scale for a given cell and datetime.
     df_line_energy: pd.DataFrame with line energy consumption data. Index - datetime, columns - consumption for each line ID.
     df_line_location: pd.DataFrame with line ID location (cell). Index - cell ID, LINESET - line ID, NR_UBICAZIONI - number of customers on the line
     df_twitter: pd.DataFrame with twitter data (hourly)
-
     """)
 
 
