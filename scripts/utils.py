@@ -137,6 +137,8 @@ def read_hamelin():
     df_energy: pd.DataFrame with energy consumption data
     df_weather: pd.DataFrame with weather data
     df_metadata: pd.DataFrame with metadata
+    df_twitter: pd.DataFrame with twitter data
+    df_trends: pd.DataFrame with trends data
 
     """)
 
@@ -146,21 +148,28 @@ def read_hamelin():
     metadata_file = 'hamelin_metadata.csv'
     weather_file = 'hamelin_weather.pkl'
     twitter_file = 'hamelin_twitter.pkl'
+    trends_file = 'hamelin_trends.pkl'
 
     try:
 
         df_energy = pd.read_pickle(hamelin_path+energy_file)
         df_metadata = pd.read_csv(hamelin_path+metadata_file,  usecols=[0,1,2], index_col=0)
         df_weather = pd.read_pickle(hamelin_path+weather_file)
+        df_twitter = pd.read_pickle(hamelin_path+twitter_file)
+        df_trends = pd.read_pickle(hamelin_path+trends_file)
+
+
     except:
         print('(Windows load)')
 
         df_energy = pd.read_pickle((hamelin_path+energy_file).replace('/', '\\'))
         df_metadata = pd.read_csv((hamelin_path+metadata_file).replace('/', '\\'),  usecols=[0,1,2], index_col=0)
         df_weather = pd.read_pickle((hamelin_path+weather_file).replace('/', '\\'))
+        df_twitter = pd.read_pickle((hamelin_path+twitter_file).replace('/', '\\'))
+        df_trends = pd.read_pickle((hamelin_path+trends_file).replace('/', '\\'))
+        
 
-
-    return [df_energy, df_weather, df_metadata]
+    return [df_energy, df_weather, df_metadata, df_twitter, df_trends]
 
 def read_london():
     print(f"""
@@ -222,7 +231,7 @@ def read_trentino():
     df_telecom: pd.DataFrame with telecom data (sms, calls, internet)  with arbitrary scale for a given cell and datetime.
     df_line_energy: pd.DataFrame with line energy consumption data. Index - datetime, columns - consumption for each line ID.
     df_line_location: pd.DataFrame with line ID location (cell). Index - cell ID, LINESET - line ID, NR_UBICAZIONI - number of customers on the line
-    
+    df_twitter: pd.DataFrame with twitter data (hourly)
 
     """)
 
@@ -233,22 +242,25 @@ def read_trentino():
     telecom_path = trentino_path+'telecom.pkl_gz'
     line_location_path = trentino_path+'line_location.csv'
     line_energy_path = trentino_path+'line_energy.csv'
+    twitter_path = trentino_path+'twitter_trentino.pkl'
 
 
     try:
         df_telecom = pd.read_pickle(telecom_path, compression='gzip')
         df_line_location = pd.read_csv(line_location_path, index_col=0)
         df_line_energy = pd.read_csv(line_energy_path, index_col=0)
+        df_twitter = pd.read_pickle(twitter_path)
     except:
         print('(Windows load)')
         df_telecom = pd.read_pickle(telecom_path.replace('/', '\\'), compression='gzip')
         df_line_location = pd.read_csv(line_location_path.replace('/', '\\'), index_col=0)
         df_line_energy = pd.read_csv(line_energy_path.replace('/', '\\'), index_col=0)
+        df_twitter = pd.read_pickle(twitter_path.replace('/', '\\'))
 
     df_line_energy.index = pd.to_datetime(df_line_energy.index) #todo is this correct?
 
 
-    return [df_telecom, df_line_energy, df_line_location]
+    return [df_telecom, df_line_energy, df_line_location, df_twitter]
 
 def add_datetime_features(dfs):
     dfs_out = []
