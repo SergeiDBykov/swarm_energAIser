@@ -60,7 +60,7 @@ st.markdown('# London dataset')
 # Note: Don't know why the read_london() didnt work if importing from utilies...
 # Thus, put the read_london in the script directly and set the absolute path
 # data_path = r'C:\Users\user\swarm_energAIser\0_data'
-data_path = os.path.join(ROOT, "0_data")
+# data_path = os.path.join(ROOT, "0_data")
 
 # @st.cache_data
 # def read_data():

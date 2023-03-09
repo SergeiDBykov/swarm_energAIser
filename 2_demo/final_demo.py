@@ -1,5 +1,15 @@
 import sys
-sys.path.append('../')
+# sys.path.append('../')
+import os
+import platform
+from pathlib import Path
+FILE = Path(__file__).resolve()
+ROOT = FILE.parents[0].parents[0]  # root directory
+if str(ROOT) not in sys.path:
+    sys.path.append(str(ROOT))  # add ROOT to PATH
+if platform.system() != 'Windows':
+    ROOT = Path(os.path.relpath(ROOT, Path.cwd()))  # relative
+
 from scripts.utils import set_mpl
 from scripts.data_and_models import read_london, predict_london
 from darts.metrics import mape, smape
@@ -117,7 +127,6 @@ if country=='London, UK':
         st.plotly_chart(fig)
 
         metrics = predict_dict['metrics']
-        
         st.write('MAPE error metrics:')
         st.write(metrics.query('model in ["Naive", "EAI"]').loc['mape', :][['Week ahead']])
 
@@ -163,9 +172,87 @@ elif country=='Hamelin, DE':
                                 options = ['<select horizon>', 'Day ahead', 'Week ahead'])
     horizon = {'Day ahead':24, 'Week ahead': 24*7, '<select horizon>': None}[horizon]
 
-
-
     st.subheader('Hamelin, DE') 
+
+    hamelin_dict = read_hamelin()
+
+    df = hamelin_dict['original_dataset'].resample('1D').mean()
+
+    fig = go.Figure()
+    fig.update_layout(
+            autosize=False,
+            width=1000,
+            height=500)
+
+    fig.add_trace(go.Scatter(x=df.index, y=df['P_substation'],
+                        mode='lines',
+                        name='Daily average'))
+    st.plotly_chart(fig)
+
+    st.markdown("Select a forecast starting date")
+    start_date = st.date_input('Start date', value = df.index.mean().date(), min_value = df.index.min(), max_value = df.index.max())
+
+    #and update the plot with the selected date as a vertical line
+    fig.add_vline(x=start_date)
+
+    show_full_metrics = st.checkbox('Show full metrics', value = 0)
+    #ask whether to proceed with the forecast
+    if st.button('Forecast'):
+        st.write('Forecasting...')
+
+        predict_dict = predict_hemalin(hamelin_dict, start_date, horizon = horizon)
+
+
+        train_df = predict_dict['train'].pd_dataframe()
+        test_df = predict_dict['test'].pd_dataframe()
+
+
+        fig = go.Figure()
+        fig.update_layout(
+            autosize=False,
+            width=1000,
+            height=500)
+
+        fig.add_trace(go.Scatter(x=train_df.tail(24).index, y=train_df.tail(24)['P_substation'],
+                            mode='lines',
+                            name='train'))
+        fig.add_trace(go.Scatter(x=test_df.head(horizon).index, y=test_df.head(horizon)['P_substation'],
+                            mode='lines',
+                            name='test'))   
+
+        for model_name in ['Naive', 'EAI (no human behaviour)', 'EAI',  'Ensemble']:
+            model_df = predict_dict[model_name]['pred_test'].pd_dataframe()
+            fig.add_trace(go.Scatter(x=model_df.index, y=model_df['P_substation'],
+                            mode='lines',
+                            name=model_name))
+            
+        
+        
+        fig.update_layout(
+            title="Train and test data",
+            xaxis_title="Date",
+            yaxis_title="Power consumption",
+            legend_title="Legend Title",
+            font=dict(
+                family="Courier New, monospace",
+                size=18,
+                color="RebeccaPurple"
+            )
+        )
+
+
+        st.plotly_chart(fig)
+
+        metrics = predict_dict['metrics']
+        st.write('MAPE error metrics:')
+        st.write(metrics.query('model in ["Naive", "EAI"]').loc['mape', :][['Week ahead']])
+
+
+        if show_full_metrics:
+            st.write('MAPE error metrics:')
+            st.write(metrics.loc['mape', :][['Week ahead', 'Last week']])
+            st.write('SMAPE error metrics:')
+            st.write(metrics.loc['smape', :][['Week ahead', 'Last week']])
    
 
 
