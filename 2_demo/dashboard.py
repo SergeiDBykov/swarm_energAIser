@@ -1,6 +1,8 @@
 import sys
 # sys.path.append('../')
 import os
+from PIL import Image
+import base64
 import platform
 from pathlib import Path
 FILE = Path(__file__).resolve()
@@ -21,10 +23,28 @@ import plotly.express as px
 import plotly.graph_objects as go
 import cufflinks as cf
 
+def get_base64(bin_file):
+    with open(bin_file, 'rb') as f:
+        data = f.read()
+    return base64.b64encode(data).decode()
+def set_background(png_file):
+    bin_str = get_base64(png_file)
+    page_bg_img = '''
+    <style>
+    .stApp {
+    background-image: url("data:image/png;base64,%s");
+    background-size: cover;
+    }
+    </style>
+    ''' % bin_str
+    st.markdown(page_bg_img, unsafe_allow_html=True)
+
 #streamlit run dashboard.py
 
 #make streamlit wide mode
-st.set_page_config(layout="wide", page_title = "EnergAIser forecasting", page_icon="📈",)
+logo = Image.open(os.path.join(ROOT, "img", "logo.jpg"))
+st.set_page_config(layout="wide", page_title = "EnergAIser forecasting", page_icon=logo, initial_sidebar_state="auto", menu_items=None)
+set_background(os.path.join(ROOT, "img", "background.jpg"))
 
 
 st.title("EnergAIser")
