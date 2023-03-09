@@ -23,10 +23,12 @@ import plotly.express as px
 import plotly.graph_objects as go
 import cufflinks as cf
 
+@st.cache
 def get_base64(bin_file):
     with open(bin_file, 'rb') as f:
         data = f.read()
     return base64.b64encode(data).decode()
+    
 def set_background(png_file):
     bin_str = get_base64(png_file)
     page_bg_img = '''
@@ -35,16 +37,46 @@ def set_background(png_file):
     background-image: url("data:image/png;base64,%s");
     background-size: cover;
     }
+    
     </style>
     ''' % bin_str
     st.markdown(page_bg_img, unsafe_allow_html=True)
 
-#streamlit run dashboard.py
+# def set_inpage_logo(png_file, background_position="50% 10%",
+#     margin_top="10%",
+#     image_width="60%",
+#     image_height="",):
+#     bin_str = get_base64(png_file)
+#     return """
+#             <style>
+#                 [data-testid="stSidebarNav"] {
+#                     background-image: url("data:image/png;base64,%s");
+#                     background-repeat: no-repeat;
+#                     background-position: %s;
+#                     margin-top: %s;
+#                     background-size: %s %s;
+#                 }
+#             </style>
+#             """ % (
+#         bin_str,
+#         background_position,
+#         margin_top,
+#         image_width,
+#         image_height,
+#     )
+
 
 #make streamlit wide mode
 logo = Image.open(os.path.join(ROOT, "img", "logo.jpg"))
 st.set_page_config(layout="wide", page_title = "EnergAIser forecasting", page_icon=logo, initial_sidebar_state="auto", menu_items=None)
 set_background(os.path.join(ROOT, "img", "background.jpg"))
+# logo_markup = set_inpage_logo(os.path.join(ROOT, "img", "logo.jpg"))
+
+# st.markdown(
+#     logo_markup,
+#     unsafe_allow_html=True,
+# )
+
 
 
 st.title("EnergAIser")
