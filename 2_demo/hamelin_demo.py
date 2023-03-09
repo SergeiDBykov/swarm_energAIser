@@ -1,6 +1,18 @@
 import streamlit as st
+import mpld3
+import streamlit.components.v1 as components
 import sys
-#sys.path.append('../../') #Seems not work in Windows
+import os
+import platform
+from pathlib import Path
+FILE = Path(__file__).resolve()
+ROOT = FILE.parents[0].parents[0]  # root directory
+if str(ROOT) not in sys.path:
+    sys.path.append(str(ROOT))  # add ROOT to PATH
+if platform.system() != 'Windows':
+    ROOT = Path(os.path.relpath(ROOT, Path.cwd()))  # relative
+data_path = os.path.join(ROOT, "0_data")
+from scripts.utils import data_path, set_mpl, read_hamelin, add_datetime_features, get_spectrogram
 
 from darts import TimeSeries
 from darts.metrics import mape
@@ -13,27 +25,23 @@ from darts.models import CatBoostModel, LightGBMModel, RegressionEnsembleModel
 
 from sklearn.preprocessing import MaxAbsScaler
 
-from scripts.utils import data_path, set_mpl, read_london, read_hamelin, add_datetime_features, get_spectrogram
+
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib as mpl
+mpl.use("agg")
 import seaborn as sns
 from IPython.display import display
 from scipy import signal
+import plotly.graph_objects as go
 
-import os
-import platform
-from pathlib import Path
-FILE = Path(__file__).resolve()
-ROOT = FILE.parents[0].parents[0]  # root directory
-if str(ROOT) not in sys.path:
-    sys.path.append(str(ROOT))  # add ROOT to PATH
-if platform.system() != 'Windows':
-    ROOT = Path(os.path.relpath(ROOT, Path.cwd()))  # relative
-data_path = os.path.join(ROOT, "0_data")
 
 set_mpl()
-
+#Page title
+st.set_page_config(
+    page_title="Siemens 2023 Hackathon - Tech for Sustainability",
+)
 st.markdown('# Hamelin dataset')
 
 
@@ -152,7 +160,7 @@ def user_input_features():
     # features = pd.DataFrame(data, index=[0])
     # show_raw        = st.sidebar.checkbox('Show raw data')
     # show_preprocess = st.sidebar.checkbox('Show preprocessed data')
-    show_train_val  = st.sidebar.checkbox('Show data split')
+    show_train_val  = st.sidebar.checkbox('Show data split', value=True)
     user_inputs = {
         'horizon_str': horizon_str,
         # 'house_number': house_number,
@@ -161,6 +169,34 @@ def user_input_features():
         'show_train_val': show_train_val
         }
     return user_inputs
+
+def show_split(train, val, test):
+    """Draw the split result of the dataset"""
+    train = train.pd_dataframe()
+    val   = val.pd_dataframe()
+    test  = test.pd_dataframe()
+    fig  = go.Figure()
+
+    fig.add_trace(go.Scatter(x=train.index, y=train['P_substation'], name="Train"))
+    fig.add_trace(go.Scatter(x=val.index, y=val['P_substation'], name="Validate"))
+    fig.add_trace(go.Scatter(x=test.index, y=test['P_substation'], name="Test"))
+    # fig.update_layout(legend_title_text = "Contestant")
+    fig.update_xaxes(title_text="Time")
+    fig.update_yaxes(title_text="Energy")
+    # fig.show()
+
+    # fig,  ax =  plt.subplots( figsize = (10,5))
+    # train.plot(ax = ax, label="train") # x=train.time_index, y=train.
+    # val.plot(ax = ax, label="validation")
+    # test.plot(ax = ax, label="test")
+    # ax.legend()
+    plt.tight_layout()
+    # fig_html = mpld3.fig_to_html(fig)
+
+    # st.pyplot(fig)
+    # ax.xaxis_date()
+    # components.html(mpld3.fig_to_html(fig), height=1000, width=1200)
+    return fig
 
 
 ############ Layout ############ 
@@ -210,16 +246,9 @@ train, val, test = data_split(target)
 
 # Draw the split result of the dataset
 if show_train_val:
-    fig,  ax =  plt.subplots( figsize = (10,5))
-
-    train.plot(ax = ax, label="train")
-    val.plot(ax = ax, label="validation")
-    test.plot(ax = ax, label="test")
-    ax.legend()
+    fig = show_split(train, val, test)
     st.markdown('### Data Split')
-    st.pyplot(fig)
-
-
+    st.plotly_chart(fig)
 
 
 # # Define and train models
@@ -228,43 +257,65 @@ models, model_naive_train = model_train(train, val, datetime_covatiates, hodiday
 
 # horizon = 24*7*1 #one week ahead
 
-fig,  ax =  plt.subplots( figsize = (12,6))
-train.tail(horizon).plot(ax = ax, label = 'train', lw = 2, alpha = 0.2)
-val.head(horizon).plot(ax = ax, label = 'val', lw = 2, alpha = 0.2)
 
-df_out_ = {}
-for name, model in models.items():
-    if name == 'naive':
-        pred_cv = model
-        pred_train = model_naive_train
-    else:
-        pred_cv = model.predict(horizon)
-        pred_train = model.predict(24*7, train[0: -24*7])
+def plot_predictions(train, val, models, horizon):
+    fig = go.Figure()
+
+    train_ = train.pd_dataframe()
+    val_   = val.pd_dataframe()
+
+    fig.add_trace(go.Scatter(x=train_.tail(horizon).index, y=train_.tail(horizon)['P_substation'], name="train"))
+    fig.add_trace(go.Scatter(x=val_.head(horizon).index, y=val_.head(horizon)['P_substation'], name="Validate"))
     
-    # print(f'{name} mape - train: {mape(train, pred_train):3g}')
-    # print(f'{name} mape - CV: {mape(val, pred_cv):3g}')
-    df_out_[f'{name} mape - train'] = round(mape(train, pred_train), 4)
-    df_out_[f'{name} mape - CV']    = round(mape(val, pred_cv), 4)
-    pred_train.tail(horizon).plot(ax = ax,  ls='--', lw=1, alpha=0.3, label=name+':train')
-    color =  ax.get_lines()[-1].get_color()
-    pred_cv.head(horizon).plot(ax=ax,  ls='--', lw=2, alpha=0.5, color = color, label=name+':CV')
-df_out = pd.DataFrame.from_dict(df_out_, orient='index')
-df_out.reset_index(inplace=True)
-temp = df_out['index'].str.split(' - ',expand=True)
-df_out['split'] = temp[1]
-df_out['model'] = temp[0].str.split(' ', n=0, expand=True)[0]
-df_out.drop(columns=['index'], inplace=True)
-df_out.set_index(df_out['model'], inplace=True)
-df_out.drop(columns=['model'], inplace=True)
-df_out_show = pd.pivot(df_out, columns='split', values=0)
-df_out_show = df_out_show[['train', 'CV']]
-df_out_show = df_out_show.loc[['catboost', 'naive']]
+    # fig,  ax =  plt.subplots( figsize = (12,6))
+    # train.tail(horizon).plot(ax = ax, label = 'train', lw = 2, alpha = 0.2)
+    # val.head(horizon).plot(ax = ax, label = 'val', lw = 2, alpha = 0.2)
+
+    df_out_ = {}
+    for name, model in models.items():
+        if name == 'naive':
+            pred_cv    = model
+            pred_train = model_naive_train
+            pred_cv_    = pred_cv.pd_dataframe()
+            pred_train_ = pred_train.pd_dataframe()
+        else:
+            pred_cv    = model.predict(horizon)
+            pred_train = model.predict(24*7, train[0: -24*7])
+            pred_cv_    = pred_cv.pd_dataframe()
+            pred_train_ = pred_train.pd_dataframe()
+
+        # print(f'{name} mape - train: {mape(train, pred_train):3g}')
+        # print(f'{name} mape - CV: {mape(val, pred_cv):3g}')
+        df_out_[f'{name} mape - train'] = round(mape(train, pred_train), 4)
+        df_out_[f'{name} mape - CV']    = round(mape(val, pred_cv), 4)
+        # pred_train.tail(horizon).plot(ax = ax,  ls='--', lw=1, alpha=0.3, label=name+':train')
+        # color =  ax.get_lines()[-1].get_color()
+        # pred_cv.head(horizon).plot(ax=ax,  ls='--', lw=2, alpha=0.5, color = color, label=name+':CV')
+        fig.add_trace(go.Scatter(x=pred_train_.tail(horizon).index, y=pred_train_.tail(horizon)['P_substation'], name=name+':train'))
+        fig.add_trace(go.Scatter(x=pred_cv_.head(horizon).index, y=pred_cv_.head(horizon)['P_substation'], name=name+':CV'))
+    df_out = pd.DataFrame.from_dict(df_out_, orient='index')
+    df_out.reset_index(inplace=True)
+    temp = df_out['index'].str.split(' - ',expand=True)
+    df_out['split'] = temp[1]
+    df_out['model'] = temp[0].str.split(' ', n=0, expand=True)[0]
+    df_out.drop(columns=['index'], inplace=True)
+    df_out.set_index(df_out['model'], inplace=True)
+    df_out.drop(columns=['model'], inplace=True)
+    df_out_show = pd.pivot(df_out, columns='split', values=0)
+    df_out_show = df_out_show[['train', 'CV']]
+    df_out_show = df_out_show.loc[['catboost', 'naive']]
 
 
-#put legend outside
-ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+    #put legend outside
+    # ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+    # # fig.update_layout(legend_title_text = "Contestant")
+    fig.update_xaxes(title_text="Time")
+    # # fig.update_yaxes(title_text="Number Eaten")
+    return fig, df_out_show
 
+fig_pred, df_out_show = plot_predictions(train, val, models, horizon)
 st.markdown('##### Prediction')
-st.pyplot(fig)
+# st.pyplot(fig_pred)
+st.plotly_chart(fig_pred)
 st.write("###### MAPE (Mean Absolute Percentage Error)")
 st.write(df_out_show)
