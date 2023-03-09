@@ -291,7 +291,7 @@ def read_hamelin():
     return output_dict
 
 
-def predict_hemalin(input_dict, timestamp='2019-09-01', horizon=24*7):
+def predict_hamalin(input_dict, timestamp='2019-09-01', horizon=24*7):
     #copy input_dict to avoid changing it
     input_dict = input_dict.copy()
 

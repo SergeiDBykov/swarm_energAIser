@@ -22,7 +22,7 @@ import plotly.graph_objects as go
 
 
 #make streamlit wide mode
-st.set_page_config(layout="wide")
+st.set_page_config(layout="wide", page_title = "EnergAIser forecasting", page_icon="📈",)
 
 
 st.title("EnergAIser")
