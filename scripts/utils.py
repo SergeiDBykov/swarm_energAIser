@@ -169,6 +169,8 @@ def read_hamelin():
         df_trends = pd.read_pickle((hamelin_path+trends_file).replace('/', '\\'))
         
 
+    df_trends.index = pd.to_datetime(df_trends.index)
+
     return [df_energy, df_weather, df_metadata, df_twitter, df_trends]
 
 def read_london():
