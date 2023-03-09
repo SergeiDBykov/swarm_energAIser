@@ -198,7 +198,7 @@ elif country=='Hamelin, DE':
     if st.button('Forecast'):
         st.write('Forecasting...')
 
-        predict_dict = predict_hemalin(hamelin_dict, start_date, horizon = horizon)
+        predict_dict = predict_hamelin(hamelin_dict, start_date, horizon = horizon)
 
 
         train_df = predict_dict['train'].pd_dataframe()
@@ -284,10 +284,7 @@ elif country=='Trentino, IT':
     print(merged.columns, merged.shape)
 
     fig = go.Figure()
-    fig.update_layout(
-            autosize=False,
-            width=1000,
-            height=500)
+
     trace1 = go.Scatter(x=merged.index, y=merged['energy'], name="energy", mode='lines',
                             yaxis='y1')
     fig.add_trace(trace1)
@@ -296,16 +293,34 @@ elif country=='Trentino, IT':
             trace = go.Scatter(x=merged.index, y=merged[col], name=col, mode='lines',
                                     yaxis='y2')
             fig.add_trace(trace)
+
     # Add figure title
     fig.update_layout(
-        title_text=f"Cell {cellid}",
-            yaxis=dict(title='Energy'),
-            yaxis2=dict(title='Activities',
-                    overlaying='y',
-                    side='right'))
+        autosize=False,
+        width=1000,
+        height=500,
+        title=f"Cell {cellid}",
+        xaxis_title="Date",
+        yaxis=dict(title='Energy'),
+        yaxis2=dict(title='Activities',
+                overlaying='y',
+                side='right'),
+        # legend_title="Legend Title",
+        font=dict(
+            family="Courier New, monospace",
+            size=18,
+            color="RebeccaPurple"
+        ),
+        legend=dict(
+            # title="Legend Title",
+            x=1.1,
+            y=1,
+            traceorder='normal',
+            font=dict(
+                size=10),
+        ),
+        )
 
-    # Set x-axis title
-    fig.update_xaxes(title_text="Timestamp")
     st.plotly_chart(fig)
 
     st.markdown("Select a date to inspect")
@@ -318,4 +333,4 @@ elif country=='Trentino, IT':
 else:
     st.subheader('Select a dataset')
 
-#streamlit run sergei_demo.py
+#streamlit run dashboard.py

@@ -240,7 +240,7 @@ def predict_london(input_dict, timestamp = '2013-03-07', horizon = 24*7):
 @st.cache_data
 def read_hamelin():
     # read data
-    energy, weather, metadata = read_hamelin_orig()
+    energy, weather, metadata, twitter, trends = read_hamelin_orig()
 
     # data cleaning
     power_substation = energy[['P_substation']].fillna(method='ffill')
@@ -291,7 +291,7 @@ def read_hamelin():
     return output_dict
 
 
-def predict_hamalin(input_dict, timestamp='2019-09-01', horizon=24*7):
+def predict_hamelin(input_dict, timestamp='2019-09-01', horizon=24*7):
     #copy input_dict to avoid changing it
     input_dict = input_dict.copy()
 
@@ -407,7 +407,7 @@ def predict_hamalin(input_dict, timestamp='2019-09-01', horizon=24*7):
 
 @st.cache_data
 def read_trentino(nmin=100, nmax=400, cellsmax=2, ids_residential=[2738, 5201, 5230]):
-    telecom, energy, lines = read_trentino_orig()
+    telecom,energy,lines, twitter = read_trentino_orig()
 
     lines_sum = lines.reset_index(inplace=False).groupby("LINESET")\
         .agg({"SQUAREID": "count", "NR_UBICAZIONI": "sum"})\

@@ -24,9 +24,7 @@ if str(rep_path) not in sys.path:
     sys.path.append(str(rep_path))  # add ROOT to PATH
 if platform.system() != 'Windows':
     rep_path = Path(os.path.relpath(rep_path, Path.cwd()))  # relative
-print(rep_path)
 data_path = os.path.join(rep_path , '0_data/')
-
 
 ### matplitlib settings
 
