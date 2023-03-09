@@ -102,10 +102,10 @@ if country=='London, UK':
                             mode='lines',
                             name='Real data'))   
 
-        if show_full_metrics:
-            list_of_models = ['Naive', 'EAI (no human behaviour)', 'EAI',  'Ensemble']
-        else:
-            list_of_models = ['Naive', 'EAI (no human behaviour)', 'EAI']
+        #if show_full_metrics:
+        #    list_of_models = ['Naive', 'EAI (no human behaviour)', 'EAI',  'Ensemble']
+        #else:
+        list_of_models = ['Naive', 'EAI (no human behaviour)', 'EAI']
 
         for model_name in list_of_models:
             model_df = predict_dict[model_name]['pred_test'].pd_dataframe()

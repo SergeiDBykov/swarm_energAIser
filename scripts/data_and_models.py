@@ -111,7 +111,7 @@ def read_london(num_homes = 300):
 
 
 
-def predict_london(input_dict, timestamp = '2013-03-07', horizon = 24*7):
+def predict_london(input_dict, timestamp = '2013-03-07', horizon = 24*7, price_weights = False):
     #copy input_dict to avoid changing it
     input_dict = input_dict.copy()
 
@@ -153,11 +153,13 @@ def predict_london(input_dict, timestamp = '2013-03-07', horizon = 24*7):
     cov_args = {"future_covariates": [datetime_covatiates,hodidays_covariates, temperature_covariate],
             "past_covariates": [twitter_covariate],}
 
-    lgbm_args = {'verbose':0, "force_col_wise":True}
+    lgbm_args = {'verbose':-1, "force_col_wise":True, 'n_estimators':85, 'max_depth': 4}
+    print('LGBM ARGS', lgbm_args)
     model = LightGBMModel(lags_future_covariates = lags_horizon_future , lags_past_covariates=lags_horizon_past, **lgbm_args  )                                
     model.fit(train, **cov_args)
 
     
+
     
     model_no_human = LightGBMModel(lags_future_covariates = lags_horizon_future , lags_past_covariates=None, **lgbm_args) 
 
@@ -167,6 +169,55 @@ def predict_london(input_dict, timestamp = '2013-03-07', horizon = 24*7):
             'EAI': {'model': model},
             'EAI (no human behaviour)': {'model': model_no_human},
             }
+
+
+    if price_weights:
+        print('Using price weights')
+        hourly_weights = {0:122,
+                            1:112,
+                            2:111,
+                            3:110,
+                            4:111,
+                            5:122,
+                            6:140,
+                            7:147,
+                            8:164,
+                            9:158,
+                            10:144,
+                            11:137,
+                            12:126,
+                            13:125,
+                            14:125,
+                            15:131,
+                            16:141,
+                            17:147,
+                            18:159,
+                            19:162,
+                            20:148,
+                            21:136,
+                            22:130,
+                            23:122}
+
+
+        weights = np.ones(len(train))*1
+        weights = weights[horizon:]
+
+        hours = train[horizon:].time_index.hour
+        #assign weights according to the hour of the training datum
+        weights = np.array([hourly_weights[x] for x in hours])
+
+    
+        model_weighted = LightGBMModel(lags_future_covariates = lags_horizon_future , lags_past_covariates=lags_horizon_past, **lgbm_args  )                                
+        model_weighted.fit(train, **cov_args, sample_weight = weights)
+
+        
+        
+        model_no_human_weighted = LightGBMModel(lags_future_covariates = lags_horizon_future , lags_past_covariates=None, **lgbm_args) 
+
+        model_no_human_weighted.fit(train, future_covariates = [datetime_covatiates, temperature_covariate], sample_weight = weights)
+
+        output_dict['EAI_w'] = {'model': model_weighted}
+        output_dict['EAI_w (no human behaviour)'] = {'model': model_no_human_weighted}
 
 
 
@@ -198,7 +249,10 @@ def predict_london(input_dict, timestamp = '2013-03-07', horizon = 24*7):
     #list of dict 
     list_metrics_dict = []
 
-    for model_name in ['Naive', 'EAI (no human behaviour)', 'EAI',  'Ensemble']:
+    #for model_name in ['Naive', 'EAI (no human behaviour)', 'EAI',  'Ensemble']:
+    for model_name in output_dict.keys():
+        if model_name in ['train', 'test']:
+            continue
         for metrics in [mape, smape]:
             metrics_name = metrics.__name__
             pred_train = output_dict[model_name]['pred_train']
