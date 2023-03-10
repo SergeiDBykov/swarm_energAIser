@@ -441,10 +441,14 @@ elif country=='Campuses in UK, UK':
             height=600,
             title='Campus energy and correlated proxy data (Google Trends data)',
             yaxis={'title': 'Power consumption (scaled)'},
+            yaxis2={'title': 'Google trend',
+                    'overlaying': 'y',
+                    'side': 'right'},
             xaxis={'title': 'Date'},
             )
+    
+
     for col in fig_campus_cases.columns:
-        print(col)
         if "university" in col.lower() or "univerity" in col.lower():
             ncol = "power consumption"
             fig.add_trace(go.Scatter(x=fig_campus_cases.index, y=fig_campus_cases[col], name=ncol), secondary_y=False)
@@ -495,6 +499,9 @@ elif country=='Campuses in US, US':
             title='Campus energy and correlated proxy data (Google Trends data)',
             yaxis={'title': 'Power consumption (scaled)'},
             xaxis={'title': 'Date'},
+            yaxis2={'title': 'Google trend',
+                    'overlaying': 'y',
+                    'side': 'right'},
             )
     for col in fig_campus_cases.columns:
         print(col.lower())
