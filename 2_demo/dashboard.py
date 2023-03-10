@@ -23,7 +23,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import cufflinks as cf
 
-@st.cache
+@st.cache_data
 def get_base64(bin_file):
     with open(bin_file, 'rb') as f:
         data = f.read()
