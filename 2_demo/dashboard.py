@@ -21,7 +21,8 @@ import streamlit as st
 import plotly
 import plotly.express as px
 import plotly.graph_objects as go
-import cufflinks as cf
+#import cufflinks as cf
+import datetime
 
 @st.cache_data
 def get_base64(bin_file):
@@ -100,6 +101,8 @@ if country=='London, UK':
     st.subheader(f'London, UK, {num_homes}')
     num_homes = {'100 Households':100, '300 Households': 300, '500 Households': 500}[num_homes]
 
+    #st.write('#### Introduction')
+    st.write('This dataset contains smart meter energy consumption readings for a sample of **5,567 London households**🏠 that participated in the Low Carbon London project **between November 2011 and February 2014**. The data is provided in two formats, half-hourly and daily, and is associated only with electrical consumption. ')
 
     london_dict = read_london(num_homes = num_homes)
 
@@ -123,7 +126,7 @@ if country=='London, UK':
     
 
     st.markdown("Select a forecast starting date")
-    start_date = st.date_input('Start date', value = df.index.mean().date(), min_value = df.index.min(), max_value = df.index.max())
+    start_date = st.date_input('Start date', value = datetime.date(2013, 3, 4), min_value = df.index.min(), max_value = df.index.max())
 
     #and update the plot with the selected date as a vertical line
     fig.add_vline(x=start_date)
@@ -228,6 +231,7 @@ if country=='London, UK':
 
 elif country=='Hamelin, DE':
     st.subheader(f'Hamelin, DE, 70 household substation')
+    st.write('This dataset contains the electricity🔌 and heat pump🔥 load profiles of **38 single-family houses**🏠 in Northern Germany, measured from **May 2018 to the end of 2020**. The dataset provides data per household of apparent, active, and reactive power (W), voltage (V), current (A), and power factor (no unit) in temporal resolution ranging from 10 seconds to 60 minutes. ')
     hamelin_dict = read_hamelin()
 
     home_power = hamelin_dict['Home']
@@ -383,6 +387,8 @@ elif country=='Trentino, IT':
     cellid_ = st.sidebar.selectbox(label = "Select cell ID", index = 0,
                             options = ['5201'])
     st.subheader('Trentino, IT') 
+    st.write('This rich and unique multi-source dataset contains 📞 telecommunications, 🌦️ weather, 📰 news, **🌐 social networks, and 💡 electricity data** from the city of Milan and the **Province of Trentino in Italy**. The data has been collected over two months, **from November 1st, 2013 to January 1st, 2014**. It has been used by over 650 teams from more than 100 universities in research work. The multi-source nature of the dataset allows for modeling of multiple dimensions of a given geographical area and can be used to tackle a variety of problems and scientific issues such as human mobility, traffic analysis, energy consumption, and linguistic studies. ')
+
     trentino_dict = read_trentino()
     telecom, energy, lines, twitter, grid = trentino_dict['telecom'], \
         trentino_dict['energy'], trentino_dict['lines'], trentino_dict['twitter'], \
@@ -414,11 +420,16 @@ elif country=='Campuses in UK, UK':
 
     
     st.subheader('Campuses in UK') 
+    st.write('To demonstrate the generalizability of proxy data, two open energy datasets from **campus buildings🏢 in the UK** were compared with **Google Trends**. The energy data comes from the Building Data Genome Project 2 at **University College London (UCL) and Cardiff University**, where daily aggregated data from all electricity meters💡 on both campuses were collected **throughout 2016.** ')
     campus_cases = read_campus().set_index('timestamp')
     campus_cases = campus_cases.loc[:, ~campus_cases.columns.str.contains('Office')]
+    campus_cases = campus_cases.loc[:, ~campus_cases.columns.str.contains('Enterprise')]
     campus_cases = pd.concat([campus_cases[[cellid_]], campus_cases.loc[:, campus_cases.columns.str.contains('GB_')]], axis=1)
     df_corr = campus_cases.corr().loc[cellid_].sort_values(ascending=False)
     fig_campus_cases = campus_cases.loc[:,df_corr.head(3).index]
+    fig_campus_cases = (fig_campus_cases-fig_campus_cases.mean())/fig_campus_cases.std()
+    fig_campus_cases = fig_campus_cases[fig_campus_cases<2]
+    fig_campus_cases = fig_campus_cases[fig_campus_cases>-2]
     fig_campus_cases = (fig_campus_cases-fig_campus_cases.mean())/fig_campus_cases.std()
 
     fig = make_subplots(specs=[[{"secondary_y": True}]])
@@ -484,13 +495,17 @@ elif country=='Campuses in US, US':
 
     
     st.subheader('Campuses in US') 
+    st.write('To demonstrate the generalizability of proxy data, two open energy datasets from **campus buildings🏢 in the US** were compared with **Google Trends**. The energy data comes from the Building Data Genome Project 2 at **University of Virginia (US) and Univerity of Texas - Austin (US)**, where daily aggregated data from all electricity meters💡 on both campuses were collected **throughout 2016.** ')
     campus_cases = read_campus().set_index('timestamp')
     campus_cases = campus_cases.loc[:, ~campus_cases.columns.str.contains('Office')]
     campus_cases = pd.concat([campus_cases[[cellid_]], campus_cases.loc[:, campus_cases.columns.str.contains('US_')]], axis=1)
     df_corr = campus_cases.corr().loc[cellid_].sort_values(ascending=False)
     fig_campus_cases = campus_cases.loc[:,df_corr.head(3).index]
     fig_campus_cases = (fig_campus_cases-fig_campus_cases.mean())/fig_campus_cases.std()
-
+    fig_campus_cases = fig_campus_cases[fig_campus_cases<2]
+    fig_campus_cases = fig_campus_cases[fig_campus_cases>-2]
+    fig_campus_cases = (fig_campus_cases-fig_campus_cases.mean())/fig_campus_cases.std()
+    
     fig = make_subplots(specs=[[{"secondary_y": True}]])
     fig.update_layout(
             autosize=False,
@@ -593,6 +608,11 @@ elif country=='Campuses in US, US':
    
 
 else:
-    st.subheader('Select a dataset')
+    #st.subheader('Select a dataset')
+    st.write('## 🔍 Demo of our solution:')
+    st.write('- #### Case study #1: Smart meters of houses in London')
+    st.write('- #### Case study #2: Smart meters of houses in Hamelin')
+    st.write('- #### Case study #3: Electricity data of city in Trentino')
+    st.write('- #### Case study #4 and 5: Campus energy in the US and UK')
 
 #streamlit run dashboard.py
