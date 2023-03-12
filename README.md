@@ -1,13 +1,12 @@
 # Team EnergAIser.
 
-![](img/logo.jpg)
+<img src=img/logo.jpg alt= “s” width="50%" height="50%">
 
 
 A winning contribution to the Siemens' [Tech For Sustainability 2023](https://ecosystem.siemens.com/techforsustainability/campaign/overview) camplaign in the   [Swarm Behaviour on the Grid](https://ecosystem.siemens.com/techforsustainability/swarm-behaviour-on-the-grid/overview) track. 
 
 
 ![](img/demo.gif)
-
 
 Our idea proposal repository is available [here](https://github.com/SergeiDBykov/siemens_swarm).
 
